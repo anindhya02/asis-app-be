@@ -1,5 +1,7 @@
 package io.propenuy.asis_app_be.model;
-
+import java.time.LocalDateTime;
+import java.util.UUID;
+import org.hibernate.annotations.CreationTimestamp;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -10,10 +12,9 @@ import lombok.*;
 @Entity
 @Table(name = "users")
 public class User {
-
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID userId;
 
     @Column(nullable = false)
     private String nama;
@@ -24,13 +25,12 @@ public class User {
     @Column(nullable = false)
     private String password;
 
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Role role;
-}
+    private String role;
 
-enum Role {
-    ADMIN,
-    PENGURUS,
-    KETUA_YAYASAN
+    @Column(nullable = false)
+    private String status;
+
+    @CreationTimestamp
+    private LocalDateTime createdDate;
 }
