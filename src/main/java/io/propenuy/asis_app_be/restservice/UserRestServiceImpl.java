@@ -4,8 +4,8 @@ import io.propenuy.asis_app_be.model.*;
 import io.propenuy.asis_app_be.repository.*;
 import io.propenuy.asis_app_be.restdto.request.*;
 import io.propenuy.asis_app_be.restdto.response.*;
-
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -16,6 +16,8 @@ import java.util.List;
 public class UserRestServiceImpl implements UserRestService {
 
     private final UserRepository userRepository;
+
+    private final BCryptPasswordEncoder passwordEncoder;
 
     @Override
     public UserResponseDTO createUser(CreateUserRequestDTO request) {
@@ -45,7 +47,7 @@ public class UserRestServiceImpl implements UserRestService {
         User user = User.builder()
                 .nama(request.getNama())
                 .username(request.getUsername())
-                .password(request.getPassword())
+                .password(passwordEncoder.encode(request.getPassword()))
                 .role(roleInput)
                 .status("ACTIVE")
                 .createdDate(LocalDateTime.now())
