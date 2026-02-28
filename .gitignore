@@ -522,6 +522,9 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
+### Uploaded files ###
+uploads/
+
 ### Gradle ###
 .gradle
 **/build/
