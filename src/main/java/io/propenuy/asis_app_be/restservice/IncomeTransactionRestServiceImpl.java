@@ -4,11 +4,15 @@ import io.propenuy.asis_app_be.model.IncomeTransaction;
 import io.propenuy.asis_app_be.model.User;
 import io.propenuy.asis_app_be.model.enums.IncomeCategory;
 import io.propenuy.asis_app_be.model.enums.PaymentMethod;
+import io.propenuy.asis_app_be.model.enums.SourceType;
 import io.propenuy.asis_app_be.repository.IncomeTransactionRepository;
 import io.propenuy.asis_app_be.repository.UserRepository;
+import io.propenuy.asis_app_be.restdto.response.IncomeTransactionListResponseDTO;
 import io.propenuy.asis_app_be.restdto.response.IncomeTransactionResponseDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.*;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -20,8 +24,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -91,6 +94,14 @@ public class IncomeTransactionRestServiceImpl implements IncomeTransactionRestSe
             throw new IllegalArgumentException("Metode pembayaran tidak valid. Nilai yang diterima: CASH, TRANSFER");
         }
 
+        // Parse & validate source type
+        SourceType srcType;
+        try {
+            srcType = SourceType.valueOf(sourceType.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Sumber donasi tidak valid. Nilai yang diterima: INDIVIDU, KOMUNITAS, PERUSAHAAN");
+        }
+
         // Parse date
         LocalDate transactionDate;
         try {
@@ -126,7 +137,7 @@ public class IncomeTransactionRestServiceImpl implements IncomeTransactionRestSe
         IncomeTransaction transaction = IncomeTransaction.builder()
                 .transactionDate(transactionDate)
                 .category(incomeCategory)
-                .sourceType(sourceType.trim())
+                .sourceType(srcType)
                 .paymentMethod(method)
                 .amount(amount)
                 .donorName(donorName != null && !donorName.isBlank() ? donorName.trim() : null)
@@ -139,6 +150,118 @@ public class IncomeTransactionRestServiceImpl implements IncomeTransactionRestSe
         incomeTransactionRepository.save(transaction);
 
         return toResponseDTO(transaction);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public IncomeTransactionListResponseDTO list(
+            String startDateStr,
+            String endDateStr,
+            String category,
+            String paymentMethod,
+            String sourceType,
+            int page,
+            int size
+    ) {
+        final LocalDate startDate;
+        final LocalDate endDate;
+
+        if (startDateStr != null && !startDateStr.isBlank()) {
+            try {
+                startDate = LocalDate.parse(startDateStr.trim(), DATE_FORMATTER);
+            } catch (Exception e) {
+                throw new IllegalArgumentException("Format startDate tidak valid. Gunakan format YYYY-MM-DD");
+            }
+        } else {
+            startDate = null;
+        }
+        if (endDateStr != null && !endDateStr.isBlank()) {
+            try {
+                endDate = LocalDate.parse(endDateStr.trim(), DATE_FORMATTER);
+            } catch (Exception e) {
+                throw new IllegalArgumentException("Format endDate tidak valid. Gunakan format YYYY-MM-DD");
+            }
+        } else {
+            endDate = null;
+        }
+
+        final IncomeCategory incomeCategory;
+        if (category != null && !category.isBlank()) {
+            try {
+                String catUpper = category.toUpperCase().replace("-", "_");
+                incomeCategory = IncomeCategory.valueOf(catUpper);
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Kategori tidak valid. Nilai yang diterima: DONASI, ZAKAT, INFAQ, LAIN_LAIN");
+            }
+        } else {
+            incomeCategory = null;
+        }
+
+        final PaymentMethod method;
+        if (paymentMethod != null && !paymentMethod.isBlank()) {
+            try {
+                method = PaymentMethod.valueOf(paymentMethod.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Metode pembayaran tidak valid. Nilai yang diterima: CASH, TRANSFER");
+            }
+        } else {
+            method = null;
+        }
+
+        final SourceType srcType;
+        if (sourceType != null && !sourceType.isBlank()) {
+            try {
+                srcType = SourceType.valueOf(sourceType.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Sumber donasi tidak valid. Nilai yang diterima: INDIVIDU, KOMUNITAS, PERUSAHAAN");
+            }
+        } else {
+            srcType = null;
+        }
+
+        Pageable pageable = PageRequest.of(
+                Math.max(page, 0),
+                size > 0 ? size : 10,
+                Sort.by(Sort.Direction.DESC, "transactionDate", "createdAt")
+        );
+
+        Specification<IncomeTransaction> spec = (root, query, cb) -> {
+            List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
+
+            predicates.add(cb.equal(root.get("status"), "CONFIRMED"));
+
+            if (startDate != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("transactionDate"), startDate));
+            }
+            if (endDate != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("transactionDate"), endDate));
+            }
+            if (incomeCategory != null) {
+                predicates.add(cb.equal(root.get("category"), incomeCategory));
+            }
+            if (method != null) {
+                predicates.add(cb.equal(root.get("paymentMethod"), method));
+            }
+            if (srcType != null) {
+                predicates.add(cb.equal(root.get("sourceType"), srcType));
+            }
+
+            return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        };
+
+        Page<IncomeTransaction> pageResult = incomeTransactionRepository.findAll(spec, pageable);
+
+        List<IncomeTransactionResponseDTO> content = pageResult.getContent().stream()
+                .map(this::toResponseDTO)
+                .toList();
+
+        return IncomeTransactionListResponseDTO.builder()
+                .content(content)
+                .page(pageResult.getNumber())
+                .size(pageResult.getSize())
+                .totalElements(pageResult.getTotalElements())
+                .totalPages(pageResult.getTotalPages())
+                .build();
     }
 
     private String saveProofFile(MultipartFile file) {
@@ -168,7 +291,7 @@ public class IncomeTransactionRestServiceImpl implements IncomeTransactionRestSe
                 .id(t.getId())
                 .transactionDate(t.getTransactionDate())
                 .category(t.getCategory().name())
-                .sourceType(t.getSourceType())
+                .sourceType(t.getSourceType().name())
                 .paymentMethod(t.getPaymentMethod().name())
                 .amount(t.getAmount())
                 .donorName(t.getDonorName())
