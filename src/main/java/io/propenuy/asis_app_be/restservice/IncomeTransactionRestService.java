@@ -26,4 +26,6 @@ public interface IncomeTransactionRestService {
             int page,
             int size
     );
+
+    IncomeTransactionResponseDTO getById(java.util.UUID id);
 }

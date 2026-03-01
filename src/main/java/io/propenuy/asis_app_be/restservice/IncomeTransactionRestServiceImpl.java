@@ -286,6 +286,14 @@ public class IncomeTransactionRestServiceImpl implements IncomeTransactionRestSe
         }
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public IncomeTransactionResponseDTO getById(UUID id) {
+        IncomeTransaction transaction = incomeTransactionRepository.findById(id)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Transaksi tidak ditemukan"));
+        return toResponseDTO(transaction);
+    }
+
     private IncomeTransactionResponseDTO toResponseDTO(IncomeTransaction t) {
         return IncomeTransactionResponseDTO.builder()
                 .id(t.getId())

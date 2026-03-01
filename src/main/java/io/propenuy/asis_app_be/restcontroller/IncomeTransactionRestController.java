@@ -139,6 +139,38 @@ public class IncomeTransactionRestController {
         }
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<BaseResponseDTO<IncomeTransactionResponseDTO>> getDetail(
+            @PathVariable UUID id
+    ) {
+        try {
+            IncomeTransactionResponseDTO data = incomeTransactionService.getById(id);
+            return ResponseEntity.ok(
+                    BaseResponseDTO.<IncomeTransactionResponseDTO>builder()
+                            .status("success")
+                            .message("Income transaction detail retrieved successfully")
+                            .data(data)
+                            .build()
+            );
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                    BaseResponseDTO.<IncomeTransactionResponseDTO>builder()
+                            .status("error")
+                            .message("Transaksi tidak ditemukan")
+                            .data(null)
+                            .build()
+            );
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    BaseResponseDTO.<IncomeTransactionResponseDTO>builder()
+                            .status("error")
+                            .message("Terjadi kesalahan: " + e.getMessage())
+                            .data(null)
+                            .build()
+            );
+        }
+    }
+
     @GetMapping("/{id}/proof")
     public ResponseEntity<Resource> getProofFile(@PathVariable UUID id) {
         IncomeTransaction transaction = incomeTransactionRepository.findById(id)
