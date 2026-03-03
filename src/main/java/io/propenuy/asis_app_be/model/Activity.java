@@ -54,4 +54,7 @@ public class Activity {
 
     @UpdateTimestamp
     private LocalDateTime updatedAt;
+
+    @Column
+    private LocalDateTime deletedAt;
 }

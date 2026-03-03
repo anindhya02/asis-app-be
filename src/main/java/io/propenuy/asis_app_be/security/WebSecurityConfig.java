@@ -42,7 +42,10 @@ public class WebSecurityConfig {
                 // ================= ROLE BASED =================
                 .requestMatchers("/api/users/**").hasAuthority("ADMIN")
                 .requestMatchers("/api/income-transactions/**").hasAnyAuthority("ADMIN", "PENGURUS")
+<<<<<<< HEAD
+=======
                 .requestMatchers("/api/expense-transactions/**").hasAnyAuthority("ADMIN", "PENGURUS")
+>>>>>>> origin/dev
                 .requestMatchers("/api/activities/**").hasAnyAuthority("ADMIN", "PENGURUS")
                 .requestMatchers("/api/donasi/**").hasAnyAuthority("ADMIN", "DONATUR")
                 .requestMatchers("/api/laporan/**").hasAnyAuthority("ADMIN", "KETUA YAYASAN")

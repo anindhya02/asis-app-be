@@ -66,7 +66,7 @@ public class ActivityRestServiceImpl implements ActivityRestService {
     @Override
     @Transactional(readOnly = true)
     public List<ActivityResponseDTO> getAllActivities() {
-        return activityRepository.findAll()
+        return activityRepository.findAllByStatusNot(ActivityStatus.DELETED)
                 .stream()
                 .map(this::toResponseDTO)
                 .toList();
@@ -75,7 +75,7 @@ public class ActivityRestServiceImpl implements ActivityRestService {
     @Override
     @Transactional(readOnly = true)
     public ActivityResponseDTO getActivityById(UUID id) {
-        Activity activity = activityRepository.findById(id)
+        Activity activity = activityRepository.findByIdAndStatusNot(id, ActivityStatus.DELETED)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
                         "Postingan kegiatan dengan id " + id + " tidak ditemukan"));
 
@@ -121,11 +121,13 @@ public class ActivityRestServiceImpl implements ActivityRestService {
     @Override
     @Transactional
     public void deleteActivity(UUID id) {
-        Activity activity = activityRepository.findById(id)
+        Activity activity = activityRepository.findByIdAndStatusNot(id, ActivityStatus.DELETED)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
                         "Postingan kegiatan dengan id " + id + " tidak ditemukan"));
 
-        activityRepository.delete(activity);
+        activity.setStatus(ActivityStatus.DELETED);
+        activity.setDeletedAt(java.time.LocalDateTime.now());
+        activityRepository.save(activity);
     }
 
     private ActivityResponseDTO toResponseDTO(Activity activity) {
