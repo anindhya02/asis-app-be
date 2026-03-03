@@ -26,4 +26,6 @@ public interface ExpenseTransactionRestService {
             int page,
             int size
     );
+
+    ExpenseTransactionResponseDTO getById(String id);
 }

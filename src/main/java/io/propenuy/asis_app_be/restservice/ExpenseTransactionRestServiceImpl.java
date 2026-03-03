@@ -210,7 +210,6 @@ public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRest
         Specification<ExpenseTransaction> spec = (root, query, cb) -> {
             List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
 
-            // Default: hanya tampilkan transaksi ACTIVE
             predicates.add(cb.equal(root.get("status"), "ACTIVE"));
 
             if (startDate != null) {
@@ -247,6 +246,26 @@ public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRest
                 .totalElements(pageResult.getTotalElements())
                 .totalPages(pageResult.getTotalPages())
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ExpenseTransactionResponseDTO getById(String id) {
+        UUID uuid;
+        try {
+            uuid = UUID.fromString(id);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Format ID tidak valid");
+        }
+
+        ExpenseTransaction transaction = expenseTransactionRepository.findById(uuid)
+                .orElse(null);
+
+        if (transaction == null || !"ACTIVE".equals(transaction.getStatus())) {
+            return null;
+        }
+
+        return toResponseDTO(transaction);
     }
 
     // Save bukti file
