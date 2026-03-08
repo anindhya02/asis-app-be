@@ -14,6 +14,11 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.List;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -28,7 +33,7 @@ public class WebSecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
-            .cors(cors -> cors.disable())
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
 
             .sessionManagement(session ->
@@ -42,10 +47,7 @@ public class WebSecurityConfig {
                 // ================= ROLE BASED =================
                 .requestMatchers("/api/users/**").hasAuthority("ADMIN")
                 .requestMatchers("/api/income-transactions/**").hasAnyAuthority("ADMIN", "PENGURUS")
-<<<<<<< HEAD
-=======
                 .requestMatchers("/api/expense-transactions/**").hasAnyAuthority("ADMIN", "PENGURUS")
->>>>>>> origin/dev
                 .requestMatchers("/api/activities/**").hasAnyAuthority("ADMIN", "PENGURUS")
                 .requestMatchers("/api/donasi/**").hasAnyAuthority("ADMIN", "DONATUR")
                 .requestMatchers("/api/laporan/**").hasAnyAuthority("ADMIN", "KETUA YAYASAN")
@@ -85,6 +87,23 @@ public class WebSecurityConfig {
                     UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    // ================= CORS =================
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOrigins(List.of(
+            "http://localhost:5173",
+            "http://localhost:5174"
+        ));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(List.of("*"));
+        config.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
     }
 
     // ================= AUTH MANAGER =================
