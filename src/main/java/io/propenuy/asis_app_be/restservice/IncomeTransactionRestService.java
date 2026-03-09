@@ -23,6 +23,7 @@ public interface IncomeTransactionRestService {
             String category,
             String paymentMethod,
             String sourceType,
+            String search,
             int page,
             int size
     );

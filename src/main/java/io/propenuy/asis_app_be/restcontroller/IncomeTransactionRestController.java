@@ -8,18 +8,13 @@ import io.propenuy.asis_app_be.restdto.response.IncomeTransactionResponseDTO;
 import io.propenuy.asis_app_be.restservice.IncomeTransactionRestService;
 import io.propenuy.asis_app_be.security.jwt.JwtUtils;
 import lombok.RequiredArgsConstructor;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.net.MalformedURLException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.net.URI;
 import java.util.UUID;
 
 @RestController
@@ -99,6 +94,7 @@ public class IncomeTransactionRestController {
             @RequestParam(value = "category", required = false) String category,
             @RequestParam(value = "paymentMethod", required = false) String paymentMethod,
             @RequestParam(value = "sourceType", required = false) String sourceType,
+            @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "page", required = false, defaultValue = "0") int page,
             @RequestParam(value = "size", required = false, defaultValue = "10") int size
     ) {
@@ -109,6 +105,7 @@ public class IncomeTransactionRestController {
                     category,
                     paymentMethod,
                     sourceType,
+                    search,
                     page,
                     size
             );
@@ -172,31 +169,18 @@ public class IncomeTransactionRestController {
     }
 
     @GetMapping("/{id}/proof")
-    public ResponseEntity<Resource> getProofFile(@PathVariable UUID id) {
+    public ResponseEntity<?> getProofFile(@PathVariable UUID id) {
         IncomeTransaction transaction = incomeTransactionRepository.findById(id)
                 .orElse(null);
-        if (transaction == null) {
+        if (transaction == null || transaction.getProofFilePath() == null
+                || transaction.getProofFilePath().isBlank()) {
             return ResponseEntity.notFound().build();
         }
-        try {
-            Path filePath = Paths.get(transaction.getProofFilePath()).toAbsolutePath().normalize();
-            Resource resource = new UrlResource(filePath.toUri());
-            if (!resource.exists() || !resource.isReadable()) {
-                return ResponseEntity.notFound().build();
-            }
-            String contentType = "application/octet-stream";
-            String filename = filePath.getFileName().toString();
-            if (filename.toLowerCase().endsWith(".pdf")) {
-                contentType = "application/pdf";
-            } else if (filename.toLowerCase().matches(".*\\.(jpg|jpeg|png|gif|webp)$")) {
-                contentType = "image/" + filename.substring(filename.lastIndexOf(".") + 1).toLowerCase();
-            }
-            return ResponseEntity.ok()
-                    .contentType(MediaType.parseMediaType(contentType))
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
-                    .body(resource);
-        } catch (MalformedURLException e) {
-            return ResponseEntity.notFound().build();
-        }
+
+        // proofFilePath sekarang berisi Cloudinary URL — redirect langsung
+        String proofUrl = transaction.getProofFilePath();
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .location(URI.create(proofUrl))
+                .build();
     }
 }
