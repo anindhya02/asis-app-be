@@ -49,6 +49,7 @@ public class WebSecurityConfig {
                 .requestMatchers("/api/income-transactions/**").hasAnyAuthority("ADMIN", "PENGURUS")
                 .requestMatchers("/api/expense-transactions/**").hasAnyAuthority("ADMIN", "PENGURUS")
                 .requestMatchers("/api/activities/**").hasAnyAuthority("ADMIN", "PENGURUS")
+                .requestMatchers("/api/payment-requests/**").hasAnyAuthority("ADMIN", "PENGURUS", "KETUA YAYASAN")
                 .requestMatchers("/api/donasi/**").hasAnyAuthority("ADMIN", "DONATUR")
                 .requestMatchers("/api/laporan/**").hasAnyAuthority("ADMIN", "KETUA YAYASAN")
 
