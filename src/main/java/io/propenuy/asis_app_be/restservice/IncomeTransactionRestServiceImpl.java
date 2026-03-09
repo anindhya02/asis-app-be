@@ -10,18 +10,14 @@ import io.propenuy.asis_app_be.repository.UserRepository;
 import io.propenuy.asis_app_be.restdto.response.IncomeTransactionListResponseDTO;
 import io.propenuy.asis_app_be.restdto.response.IncomeTransactionResponseDTO;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -32,7 +28,9 @@ public class IncomeTransactionRestServiceImpl implements IncomeTransactionRestSe
 
     private final IncomeTransactionRepository incomeTransactionRepository;
     private final UserRepository userRepository;
+    private final CloudinaryStorageService cloudinaryStorageService;
 
+    private static final String CLOUDINARY_FOLDER = "income-proofs";
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
     private static final List<String> ALLOWED_IMAGE_TYPES = List.of(
             "image/jpeg", "image/png", "image/gif", "image/webp"
@@ -40,9 +38,6 @@ public class IncomeTransactionRestServiceImpl implements IncomeTransactionRestSe
     private static final List<String> ALLOWED_DOC_TYPES = List.of(
             "application/pdf"
     );
-
-    @Value("${app.upload.dir:uploads/income-proofs}")
-    private String uploadDir;
 
     @Override
     @Transactional
@@ -131,8 +126,23 @@ public class IncomeTransactionRestServiceImpl implements IncomeTransactionRestSe
         User createdByUser = userRepository.findByUsername(currentUsername)
                 .orElseThrow(() -> new IllegalArgumentException("User tidak ditemukan"));
 
-        // Save file
-        String proofFilePath = saveProofFile(proofFile);
+        // Upload file ke Cloudinary
+        // PDF -> resource_type "raw" agar browser bisa render langsung
+        // Image -> resource_type "image"
+        String proofFilePath;
+        try {
+            String originalFilename = proofFile.getOriginalFilename();
+            String extension = originalFilename != null && originalFilename.contains(".")
+                    ? originalFilename.substring(originalFilename.lastIndexOf("."))
+                    : "";
+            String storagePath = UUID.randomUUID() + extension;
+            String resourceType = ALLOWED_DOC_TYPES.contains(contentType) ? "raw" : "image";
+            proofFilePath = cloudinaryStorageService.uploadFile(
+                    proofFile, storagePath, CLOUDINARY_FOLDER, resourceType
+            );
+        } catch (IOException e) {
+            throw new RuntimeException("Gagal mengupload file bukti ke Cloudinary: " + e.getMessage());
+        }
 
         IncomeTransaction transaction = IncomeTransaction.builder()
                 .transactionDate(transactionDate)
@@ -160,6 +170,7 @@ public class IncomeTransactionRestServiceImpl implements IncomeTransactionRestSe
             String category,
             String paymentMethod,
             String sourceType,
+            String search,
             int page,
             int size
     ) {
@@ -246,6 +257,15 @@ public class IncomeTransactionRestServiceImpl implements IncomeTransactionRestSe
                 predicates.add(cb.equal(root.get("sourceType"), srcType));
             }
 
+            // Pencarian teks: donorName atau createdBy.username
+            if (search != null && !search.isBlank()) {
+                String pattern = "%" + search.trim().toLowerCase() + "%";
+                predicates.add(cb.or(
+                        cb.like(cb.lower(root.get("donorName")), pattern),
+                        cb.like(cb.lower(root.join("createdBy").get("username")), pattern)
+                ));
+            }
+
             return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
         };
 
@@ -264,27 +284,7 @@ public class IncomeTransactionRestServiceImpl implements IncomeTransactionRestSe
                 .build();
     }
 
-    private String saveProofFile(MultipartFile file) {
-        try {
-            Path uploadPath = Paths.get(uploadDir);
-            if (!Files.exists(uploadPath)) {
-                Files.createDirectories(uploadPath);
-            }
 
-            String originalFilename = file.getOriginalFilename();
-            String extension = originalFilename != null && originalFilename.contains(".")
-                    ? originalFilename.substring(originalFilename.lastIndexOf("."))
-                    : "";
-            String filename = UUID.randomUUID() + extension;
-
-            Path filePath = uploadPath.resolve(filename);
-            Files.copy(file.getInputStream(), filePath);
-
-            return uploadDir + "/" + filename;
-        } catch (IOException e) {
-            throw new RuntimeException("Gagal menyimpan file bukti: " + e.getMessage());
-        }
-    }
 
     @Override
     @Transactional(readOnly = true)
