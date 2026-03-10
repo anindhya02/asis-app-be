@@ -174,7 +174,7 @@ public class ActivityRestController {
         }
     }
 
-    @DeleteMapping("/{id}")
+    @PutMapping("/{id}/delete")
     public ResponseEntity<BaseResponseDTO<Void>> deleteActivity(@PathVariable UUID id) {
         try {
             String currentUsername = jwtUtils.getCurrentUsername();
