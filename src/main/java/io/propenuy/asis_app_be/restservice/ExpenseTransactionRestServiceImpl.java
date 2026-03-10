@@ -1,5 +1,22 @@
 package io.propenuy.asis_app_be.restservice;
 
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
 import io.propenuy.asis_app_be.model.ExpenseTransaction;
 import io.propenuy.asis_app_be.model.User;
 import io.propenuy.asis_app_be.model.enums.ExpenseCategory;
@@ -10,26 +27,6 @@ import io.propenuy.asis_app_be.repository.UserRepository;
 import io.propenuy.asis_app_be.restdto.response.ExpenseTransactionListResponseDTO;
 import io.propenuy.asis_app_be.restdto.response.ExpenseTransactionResponseDTO;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -38,6 +35,7 @@ public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRest
     private final ExpenseTransactionRepository expenseTransactionRepository;
     private final IncomeTransactionRepository incomeTransactionRepository;
     private final UserRepository userRepository;
+    private final CloudinaryStorageService cloudinaryStorageService;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
     private static final List<String> ALLOWED_IMAGE_TYPES = List.of(
@@ -47,8 +45,7 @@ public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRest
             "application/pdf"
     );
 
-    @Value("${app.upload.dir.expense:uploads/expense-proofs}")
-    private String uploadDir;
+    private static final String CLOUDINARY_FOLDER = "expense-proofs";
 
     @Override
     @Transactional
@@ -160,6 +157,8 @@ public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRest
     public ExpenseTransactionListResponseDTO list(
             String startDateStr,
             String endDateStr,
+            String category,
+            String program,
             String paymentMethod,
             String search,
             int page,
@@ -199,6 +198,22 @@ public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRest
             method = null;
         }
 
+        final ExpenseCategory expenseCategoryFilter;
+        if (category != null && !category.isBlank()) {
+            try {
+                String catUpper = category.toUpperCase().replace("-", "_").replace(" ", "_");
+                expenseCategoryFilter = ExpenseCategory.valueOf(catUpper);
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException(
+                        "Kategori tidak valid. Nilai yang diterima: OPERASIONAL, KONSUMSI, TRANSPORTASI, PERLENGKAPAN, PROGRAM_KEGIATAN, GAJI, INFRASTRUKTUR, LAIN_LAIN"
+                );
+            }
+        } else {
+            expenseCategoryFilter = null;
+        }
+
+        final String programFilter = (program != null && !program.isBlank()) ? program.trim() : null;
+
         final String searchTerm = (search != null && !search.isBlank()) ? search.trim().toLowerCase() : null;
 
         Pageable pageable = PageRequest.of(
@@ -217,6 +232,12 @@ public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRest
             }
             if (endDate != null) {
                 predicates.add(cb.lessThanOrEqualTo(root.get("transactionDate"), endDate));
+            }
+            if (expenseCategoryFilter != null) {
+                predicates.add(cb.equal(root.get("category"), expenseCategoryFilter));
+            }
+            if (programFilter != null) {
+                predicates.add(cb.equal(root.get("program"), programFilter));
             }
             if (method != null) {
                 predicates.add(cb.equal(root.get("paymentMethod"), method));
@@ -268,26 +289,21 @@ public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRest
         return toResponseDTO(transaction);
     }
 
-    // Save bukti file
+    // Upload bukti file ke Cloudinary
     private String saveProofFile(MultipartFile file) {
         try {
-            Path uploadPath = Paths.get(uploadDir);
-            if (!Files.exists(uploadPath)) {
-                Files.createDirectories(uploadPath);
-            }
-
+            String contentType = file.getContentType();
             String originalFilename = file.getOriginalFilename();
             String extension = originalFilename != null && originalFilename.contains(".")
                     ? originalFilename.substring(originalFilename.lastIndexOf("."))
                     : "";
-            String filename = UUID.randomUUID() + extension;
-
-            Path filePath = uploadPath.resolve(filename);
-            Files.copy(file.getInputStream(), filePath);
-
-            return uploadDir + "/" + filename;
+            String storagePath = UUID.randomUUID() + extension;
+            String resourceType = ALLOWED_DOC_TYPES.contains(contentType) ? "raw" : "image";
+            return cloudinaryStorageService.uploadFile(
+                    file, storagePath, CLOUDINARY_FOLDER, resourceType
+            );
         } catch (IOException e) {
-            throw new RuntimeException("Gagal menyimpan file bukti: " + e.getMessage());
+            throw new RuntimeException("Gagal mengupload file bukti ke Cloudinary: " + e.getMessage());
         }
     }
 

@@ -1,5 +1,8 @@
 package io.propenuy.asis_app_be.restcontroller;
 
+import java.net.URI;
+import java.util.UUID;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -11,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import io.propenuy.asis_app_be.model.ExpenseTransaction;
+import io.propenuy.asis_app_be.repository.ExpenseTransactionRepository;
 import io.propenuy.asis_app_be.restdto.response.BaseResponseDTO;
 import io.propenuy.asis_app_be.restdto.response.ExpenseTransactionListResponseDTO;
 import io.propenuy.asis_app_be.restdto.response.ExpenseTransactionResponseDTO;
@@ -24,6 +29,7 @@ import lombok.RequiredArgsConstructor;
 public class ExpenseTransactionRestController {
 
     private final ExpenseTransactionRestService expenseTransactionService;
+    private final ExpenseTransactionRepository expenseTransactionRepository;
     private final JwtUtils jwtUtils;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -91,6 +97,8 @@ public class ExpenseTransactionRestController {
     public ResponseEntity<BaseResponseDTO<ExpenseTransactionListResponseDTO>> list(
             @RequestParam(value = "startDate", required = false) String startDate,
             @RequestParam(value = "endDate", required = false) String endDate,
+            @RequestParam(value = "category", required = false) String category,
+            @RequestParam(value = "program", required = false) String program,
             @RequestParam(value = "paymentMethod", required = false) String paymentMethod,
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "page", required = false, defaultValue = "0") int page,
@@ -100,6 +108,8 @@ public class ExpenseTransactionRestController {
             ExpenseTransactionListResponseDTO data = expenseTransactionService.list(
                     startDate,
                     endDate,
+                    category,
+                    program,
                     paymentMethod,
                     search,
                     page,
@@ -173,5 +183,21 @@ public class ExpenseTransactionRestController {
                             .build()
             );
         }
+    }
+
+    @GetMapping("/{id}/proof")
+    public ResponseEntity<?> getProofFile(@PathVariable UUID id) {
+        ExpenseTransaction transaction = expenseTransactionRepository.findById(id)
+                .orElse(null);
+        if (transaction == null || transaction.getProofFilePath() == null
+                || transaction.getProofFilePath().isBlank()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // proofFilePath berisi Cloudinary URL — redirect langsung
+        String proofUrl = transaction.getProofFilePath();
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .location(URI.create(proofUrl))
+                .build();
     }
 }
