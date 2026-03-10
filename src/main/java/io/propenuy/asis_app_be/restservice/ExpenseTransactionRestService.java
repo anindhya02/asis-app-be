@@ -21,6 +21,8 @@ public interface ExpenseTransactionRestService {
     ExpenseTransactionListResponseDTO list(
             String startDateStr,
             String endDateStr,
+            String category,
+            String program,
             String paymentMethod,
             String search,
             int page,
