@@ -2,7 +2,6 @@ package io.propenuy.asis_app_be.restservice;
 
 import io.propenuy.asis_app_be.model.Activity;
 import io.propenuy.asis_app_be.model.ActivityAttachment;
-import io.propenuy.asis_app_be.model.enums.ActivityStatus;
 import io.propenuy.asis_app_be.repository.ActivityAttachmentRepository;
 import io.propenuy.asis_app_be.repository.ActivityRepository;
 import io.propenuy.asis_app_be.restdto.response.AttachmentResponseDTO;
@@ -32,7 +31,7 @@ public class ActivityAttachmentRestServiceImpl implements ActivityAttachmentRest
     @Override
     @Transactional
     public List<AttachmentResponseDTO> uploadAttachments(UUID activityId, MultipartFile[] files) {
-        Activity activity = activityRepository.findByIdAndStatusNot(activityId, ActivityStatus.DELETED)
+        Activity activity = activityRepository.findById(activityId)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Postingan kegiatan dengan id " + activityId + " tidak ditemukan"));
 
@@ -90,8 +89,8 @@ public class ActivityAttachmentRestServiceImpl implements ActivityAttachmentRest
     @Override
     @Transactional(readOnly = true)
     public List<AttachmentResponseDTO> getAttachmentsByActivityId(UUID activityId) {
-        // Pastikan activity ada dan belum dihapus
-        activityRepository.findByIdAndStatusNot(activityId, ActivityStatus.DELETED)
+        // Pastikan activity ada
+        activityRepository.findById(activityId)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Postingan kegiatan dengan id " + activityId + " tidak ditemukan"));
 

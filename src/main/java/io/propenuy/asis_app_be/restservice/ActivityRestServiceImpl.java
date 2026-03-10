@@ -1,8 +1,10 @@
 package io.propenuy.asis_app_be.restservice;
 
 import io.propenuy.asis_app_be.model.Activity;
+import io.propenuy.asis_app_be.model.ActivityAttachment;
 import io.propenuy.asis_app_be.model.User;
 import io.propenuy.asis_app_be.model.enums.ActivityStatus;
+import io.propenuy.asis_app_be.repository.ActivityAttachmentRepository;
 import io.propenuy.asis_app_be.repository.ActivityRepository;
 import io.propenuy.asis_app_be.repository.UserRepository;
 import io.propenuy.asis_app_be.restdto.request.CreateActivityRequestDTO;
@@ -12,6 +14,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -20,7 +24,9 @@ import java.util.UUID;
 public class ActivityRestServiceImpl implements ActivityRestService {
 
     private final ActivityRepository activityRepository;
+    private final ActivityAttachmentRepository attachmentRepository;
     private final UserRepository userRepository;
+    private final CloudinaryStorageService cloudinaryStorageService;
 
     @Override
     @Transactional
@@ -66,7 +72,7 @@ public class ActivityRestServiceImpl implements ActivityRestService {
     @Override
     @Transactional(readOnly = true)
     public List<ActivityResponseDTO> getAllActivities() {
-        return activityRepository.findAllByStatusNot(ActivityStatus.DELETED)
+        return activityRepository.findAllByIsDeletedFalseOrderByCreatedAtDesc()
                 .stream()
                 .map(this::toResponseDTO)
                 .toList();
@@ -75,7 +81,7 @@ public class ActivityRestServiceImpl implements ActivityRestService {
     @Override
     @Transactional(readOnly = true)
     public ActivityResponseDTO getActivityById(UUID id) {
-        Activity activity = activityRepository.findByIdAndStatusNot(id, ActivityStatus.DELETED)
+        Activity activity = activityRepository.findById(id)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
                         "Postingan kegiatan dengan id " + id + " tidak ditemukan"));
 
@@ -121,12 +127,13 @@ public class ActivityRestServiceImpl implements ActivityRestService {
     @Override
     @Transactional
     public void deleteActivity(UUID id) {
-        Activity activity = activityRepository.findByIdAndStatusNot(id, ActivityStatus.DELETED)
+        Activity activity = activityRepository.findById(id)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
                         "Postingan kegiatan dengan id " + id + " tidak ditemukan"));
 
-        activity.setStatus(ActivityStatus.DELETED);
-        activity.setDeletedAt(java.time.LocalDateTime.now());
+        // Soft delete
+        activity.setDeleted(true);
+        activity.setDeletedAt(LocalDateTime.now());
         activityRepository.save(activity);
     }
 

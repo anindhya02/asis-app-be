@@ -55,6 +55,10 @@ public class Activity {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean isDeleted = false;
+
     @Column
     private LocalDateTime deletedAt;
 }
