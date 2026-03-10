@@ -28,6 +28,27 @@ import io.propenuy.asis_app_be.restdto.response.ExpenseTransactionListResponseDT
 import io.propenuy.asis_app_be.restdto.response.ExpenseTransactionResponseDTO;
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import io.propenuy.asis_app_be.model.ExpenseTransaction;
+import io.propenuy.asis_app_be.model.User;
+import io.propenuy.asis_app_be.model.enums.ExpenseCategory;
+import io.propenuy.asis_app_be.model.enums.PaymentMethod;
+import io.propenuy.asis_app_be.repository.ExpenseTransactionRepository;
+import io.propenuy.asis_app_be.repository.IncomeTransactionRepository;
+import io.propenuy.asis_app_be.repository.UserRepository;
+import io.propenuy.asis_app_be.restdto.response.ExpenseTransactionListResponseDTO;
+import io.propenuy.asis_app_be.restdto.response.ExpenseTransactionResponseDTO;
+import lombok.RequiredArgsConstructor;
+
 @Service
 @RequiredArgsConstructor
 public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRestService {
@@ -96,7 +117,7 @@ public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRest
         try {
             method = PaymentMethod.valueOf(paymentMethod.toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Metode pembayaran tidak valid. Nilai yang diterima: CASH, TRANSFER, QRIS");
+            throw new IllegalArgumentException("Metode pembayaran tidak valid. Nilai yang diterima: CASH, TRANSFER");
         }
 
         LocalDate transactionDate;
@@ -192,7 +213,7 @@ public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRest
             try {
                 method = PaymentMethod.valueOf(paymentMethod.toUpperCase());
             } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Metode pembayaran tidak valid. Nilai yang diterima: CASH, TRANSFER, QRIS");
+                throw new IllegalArgumentException("Metode pembayaran tidak valid. Nilai yang diterima: CASH, TRANSFER");
             }
         } else {
             method = null;

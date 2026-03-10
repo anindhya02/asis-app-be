@@ -1,15 +1,35 @@
 package io.propenuy.asis_app_be.model;
 
-import io.propenuy.asis_app_be.model.enums.ExpenseCategory;
-import io.propenuy.asis_app_be.model.enums.PaymentRequestStatus;
-import jakarta.persistence.*;
-import lombok.*;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.UUID;
+import io.propenuy.asis_app_be.model.enums.ExpenseCategory;
+import io.propenuy.asis_app_be.model.enums.PaymentMethod;
+import io.propenuy.asis_app_be.model.enums.PaymentRequestStatus;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
@@ -37,7 +57,33 @@ public class PaymentRequest {
     private ExpenseCategory expenseCategory;
 
     @Column
+    private String subCategory;
+
+    @Column
     private String program;
+
+    @Column
+    private LocalDate neededDate;
+
+    @Enumerated(EnumType.STRING)
+    @Column
+    private PaymentMethod paymentMethod;
+
+    @Column
+    private String recipient;
+
+    @Column(columnDefinition = "TEXT")
+    private String notes;
+
+    @Column(columnDefinition = "TEXT")
+    private String supportingDocumentUrl;
+
+    @Column
+    private String supportingDocumentName;
+
+    @OneToMany(mappedBy = "paymentRequest", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<PaymentRequestBreakdown> breakdowns = new ArrayList<>();
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
