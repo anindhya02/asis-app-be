@@ -215,9 +215,6 @@ public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRest
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException("Metode pembayaran tidak valid. Nilai yang diterima: CASH, TRANSFER");
             }
-        } else {
-            method = null;
-        }
 
         final ExpenseCategory expenseCategoryFilter;
         if (category != null && !category.isBlank()) {
