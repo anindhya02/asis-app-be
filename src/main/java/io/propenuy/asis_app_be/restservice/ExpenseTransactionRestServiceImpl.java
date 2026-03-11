@@ -28,8 +28,6 @@ import io.propenuy.asis_app_be.restdto.response.ExpenseTransactionListResponseDT
 import io.propenuy.asis_app_be.restdto.response.ExpenseTransactionResponseDTO;
 import lombok.RequiredArgsConstructor;
 
-import org.springframework.beans.factory.annotation.Value;
-
 @Service
 @RequiredArgsConstructor
 public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRestService {
