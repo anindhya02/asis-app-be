@@ -220,11 +220,11 @@ public class PaymentRequestRestServiceImpl implements PaymentRequestRestService 
                 throw new IllegalArgumentException("Dokumen pendukung wajib diunggah sebelum submit");
             }
         } else {
-            // Draft: at minimum need a title or category to be identifiable
+            // Draft: require title, needed date, and expense category
             if ((title == null || title.isBlank())
-                    && (expenseCategoryStr == null || expenseCategoryStr.isBlank())
-                    && (neededDateStr == null || neededDateStr.isBlank())) {
-                throw new IllegalArgumentException("Minimal isi tanggal dan kategori untuk menyimpan draft");
+                    || (expenseCategoryStr == null || expenseCategoryStr.isBlank())
+                    || (neededDateStr == null || neededDateStr.isBlank())) {
+                throw new IllegalArgumentException("Minimal isi judul, tanggal, kategori untuk menyimpan draft.");
             }
         }
 
