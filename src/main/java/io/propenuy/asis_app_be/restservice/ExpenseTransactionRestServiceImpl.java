@@ -2,7 +2,9 @@ package io.propenuy.asis_app_be.restservice;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -46,6 +48,8 @@ public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRest
     );
 
     private static final String CLOUDINARY_FOLDER = "expense-proofs";
+    private static final String ROLE_PENGURUS = "PENGURUS";
+    private static final String ROLE_KETUA_YAYASAN = "KETUA YAYASAN";
 
     @Override
     @Transactional
@@ -289,6 +293,127 @@ public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRest
         return toResponseDTO(transaction);
     }
 
+    @Override
+    @Transactional
+    public ExpenseTransactionResponseDTO update(
+            String id,
+            String category,
+            String subCategoryStr,
+            String program,
+            String penerimaDana,
+            String note,
+            String currentUsername
+    ) {
+        UUID uuid;
+        try {
+            uuid = UUID.fromString(id);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Format ID tidak valid");
+        }
+
+        ExpenseTransaction transaction = expenseTransactionRepository.findById(uuid)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Transaksi pengeluaran tidak ditemukan"));
+
+        if ("INACTIVE".equalsIgnoreCase(transaction.getStatus())) {
+            throw new IllegalStateException("Transaksi pengeluaran sudah nonaktif dan tidak dapat diubah");
+        }
+
+        if (transaction.getAmount() == null || transaction.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Nominal transaksi tidak valid (harus lebih dari 0)");
+        }
+        if (transaction.getProofFilePath() == null || transaction.getProofFilePath().isBlank()) {
+            throw new IllegalArgumentException("Bukti transaksi wajib tersedia");
+        }
+
+        User updatedByUser = userRepository.findByUsername(currentUsername)
+                .orElseThrow(() -> new IllegalArgumentException("User tidak ditemukan"));
+
+        boolean isKetua = hasRole(updatedByUser, ROLE_KETUA_YAYASAN);
+        boolean isPengurus = hasRole(updatedByUser, ROLE_PENGURUS);
+        if (!isKetua && !isPengurus) {
+            throw new ExpenseEditForbiddenException("Anda tidak memiliki akses untuk mengubah transaksi ini");
+        }
+
+        if (isPengurus) {
+            if (transaction.getCreatedBy() == null
+                    || transaction.getCreatedBy().getUserId() == null
+                    || !transaction.getCreatedBy().getUserId().equals(updatedByUser.getUserId())) {
+                throw new ExpenseEditForbiddenException("Pengurus hanya dapat mengedit transaksi yang dibuat sendiri");
+            }
+            LocalDateTime createdAt = transaction.getCreatedAt();
+            if (createdAt == null || Duration.between(createdAt, LocalDateTime.now()).toMinutes() > 30) {
+                throw new ExpenseEditForbiddenException("Batas waktu edit telah habis");
+            }
+        }
+
+        if (category == null || category.isBlank()) {
+            throw new IllegalArgumentException("Kategori pengeluaran wajib diisi");
+        }
+        if (program == null || program.isBlank()) {
+            throw new IllegalArgumentException("Program wajib diisi");
+        }
+        if (penerimaDana == null || penerimaDana.isBlank()) {
+            throw new IllegalArgumentException("Penerima dana wajib diisi");
+        }
+
+        ExpenseCategory expenseCategory;
+        try {
+            String catUpper = category.toUpperCase().replace("-", "_").replace(" ", "_");
+            expenseCategory = ExpenseCategory.valueOf(catUpper);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(
+                    "Kategori tidak valid. Nilai yang dikenali: "
+                            + Arrays.stream(ExpenseCategory.values())
+                            .map(Enum::name)
+                            .collect(Collectors.joining(", "))
+            );
+        }
+
+        String normalizedSub = ExpenseCategoryRules.normalizeSubCategory(subCategoryStr);
+        ExpenseCategoryRules.validateSubForMain(expenseCategory, normalizedSub);
+
+        transaction.setCategory(expenseCategory);
+        transaction.setSubCategory(normalizedSub);
+        transaction.setProgram(program.trim());
+        transaction.setPenerimaDana(penerimaDana.trim());
+        transaction.setNote(note != null && !note.isBlank() ? note.trim() : null);
+        transaction.setUpdatedBy(updatedByUser);
+
+        expenseTransactionRepository.save(transaction);
+        return toResponseDTO(transaction);
+    }
+
+    @Override
+    @Transactional
+    public void softDelete(String id, String currentUsername) {
+        UUID uuid;
+        try {
+            uuid = UUID.fromString(id);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Format ID tidak valid");
+        }
+
+        ExpenseTransaction transaction = expenseTransactionRepository.findById(uuid)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Transaksi pengeluaran tidak ditemukan"));
+
+        if ("INACTIVE".equalsIgnoreCase(transaction.getStatus())) {
+            throw new IllegalStateException("Transaksi pengeluaran sudah nonaktif");
+        }
+
+        User deletedByUser = userRepository.findByUsername(currentUsername)
+                .orElseThrow(() -> new IllegalArgumentException("User tidak ditemukan"));
+
+        if (!hasRole(deletedByUser, ROLE_KETUA_YAYASAN)) {
+            throw new ExpenseEditForbiddenException("Hanya Ketua Yayasan yang dapat menonaktifkan transaksi pengeluaran");
+        }
+
+        transaction.setStatus("INACTIVE");
+        transaction.setDeletedAt(LocalDateTime.now());
+        transaction.setDeletedBy(deletedByUser);
+        transaction.setUpdatedBy(deletedByUser);
+        expenseTransactionRepository.save(transaction);
+    }
+
     // Upload bukti file ke Cloudinary
     private String saveProofFile(MultipartFile file) {
         try {
@@ -321,6 +446,15 @@ public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRest
                 .status(t.getStatus())
                 .createdByUsername(t.getCreatedBy().getUsername())
                 .createdAt(t.getCreatedAt())
+                .updatedAt(t.getUpdatedAt())
+                .updatedByUsername(t.getUpdatedBy() != null ? t.getUpdatedBy().getUsername() : null)
                 .build();
+    }
+
+    private boolean hasRole(User user, String role) {
+        if (user == null || user.getRole() == null) {
+            return false;
+        }
+        return role.equalsIgnoreCase(user.getRole().trim());
     }
 }
