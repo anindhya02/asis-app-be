@@ -48,6 +48,7 @@ public class WebSecurityConfig {
                 // ================= ROLE BASED =================
                 .requestMatchers("/api/users/**").hasAuthority("ADMIN")
                 .requestMatchers(HttpMethod.POST, "/api/income-transactions/**").hasAuthority("PENGURUS")
+                .requestMatchers(HttpMethod.DELETE, "/api/income-transactions/**").hasAuthority("KETUA YAYASAN")
                 .requestMatchers("/api/income-transactions/**").hasAnyAuthority("PENGURUS", "KETUA YAYASAN")
                 .requestMatchers("/api/expense-transactions/**").hasAnyAuthority("ADMIN", "PENGURUS")
                 .requestMatchers("/api/activities/**").hasAnyAuthority("ADMIN", "PENGURUS")
