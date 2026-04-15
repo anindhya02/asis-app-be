@@ -18,6 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -33,6 +34,8 @@ public class IncomeTransactionRestServiceImpl implements IncomeTransactionRestSe
 
     private static final String CLOUDINARY_FOLDER = "income-proofs";
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
+    private static final String ROLE_PENGURUS = "PENGURUS";
+    private static final String ROLE_KETUA_YAYASAN = "KETUA YAYASAN";
     private static final List<String> ALLOWED_IMAGE_TYPES = List.of(
             "image/jpeg", "image/png", "image/gif", "image/webp"
     );
@@ -335,6 +338,34 @@ public class IncomeTransactionRestServiceImpl implements IncomeTransactionRestSe
             throw new IllegalArgumentException("Transaksi sudah dinonaktifkan dan tidak dapat diubah");
         }
 
+        User updatedByUser = userRepository.findByUsername(currentUsername)
+                .orElseThrow(() -> new IllegalArgumentException("User tidak ditemukan"));
+
+        boolean isKetua = hasRole(updatedByUser, ROLE_KETUA_YAYASAN);
+        boolean isPengurus = hasRole(updatedByUser, ROLE_PENGURUS);
+
+        if (!isKetua && !isPengurus) {
+            throw new IllegalArgumentException("Anda tidak memiliki akses untuk mengubah transaksi ini");
+        }
+
+        if (isPengurus) {
+            if (transaction.getCreatedBy() == null
+                    || transaction.getCreatedBy().getUserId() == null
+                    || !transaction.getCreatedBy().getUserId().equals(updatedByUser.getUserId())) {
+                throw new IllegalArgumentException("Pengurus hanya dapat mengubah transaksi yang dibuat sendiri");
+            }
+
+            LocalDateTime createdAt = transaction.getCreatedAt();
+            if (createdAt == null || Duration.between(createdAt, LocalDateTime.now()).toMinutes() > 30) {
+                throw new IllegalArgumentException("Batas waktu edit 30 menit telah terlewati");
+            }
+
+            int editCount = transaction.getPengurusEditCount() == null ? 0 : transaction.getPengurusEditCount();
+            if (editCount >= 1) {
+                throw new IllegalArgumentException("Kuota edit Pengurus untuk transaksi ini sudah habis");
+            }
+        }
+
         if (transactionDateStr == null || transactionDateStr.isBlank()) {
             throw new IllegalArgumentException("Tanggal transaksi wajib diisi");
         }
@@ -411,9 +442,6 @@ public class IncomeTransactionRestServiceImpl implements IncomeTransactionRestSe
             }
         }
 
-        User updatedByUser = userRepository.findByUsername(currentUsername)
-                .orElseThrow(() -> new IllegalArgumentException("User tidak ditemukan"));
-
         transaction.setTransactionDate(transactionDate);
         transaction.setCategory(incomeCategory);
         transaction.setSourceType(srcType);
@@ -423,10 +451,21 @@ public class IncomeTransactionRestServiceImpl implements IncomeTransactionRestSe
         transaction.setNote(note != null && !note.isBlank() ? note.trim() : null);
         transaction.setProofFilePath(proofFilePath);
         transaction.setUpdatedBy(updatedByUser);
+        if (isPengurus) {
+            int editCount = transaction.getPengurusEditCount() == null ? 0 : transaction.getPengurusEditCount();
+            transaction.setPengurusEditCount(editCount + 1);
+        }
 
         incomeTransactionRepository.save(transaction);
 
         return toResponseDTO(transaction);
+    }
+
+    private boolean hasRole(User user, String role) {
+        if (user == null || user.getRole() == null) {
+            return false;
+        }
+        return role.equalsIgnoreCase(user.getRole().trim());
     }
 
     private IncomeTransactionResponseDTO toResponseDTO(IncomeTransaction t) {
