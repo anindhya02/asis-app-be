@@ -18,7 +18,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
@@ -32,6 +34,8 @@ public class IncomeTransactionRestServiceImpl implements IncomeTransactionRestSe
 
     private static final String CLOUDINARY_FOLDER = "income-proofs";
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
+    private static final String ROLE_PENGURUS = "PENGURUS";
+    private static final String ROLE_KETUA_YAYASAN = "KETUA YAYASAN";
     private static final List<String> ALLOWED_IMAGE_TYPES = List.of(
             "image/jpeg", "image/png", "image/gif", "image/webp"
     );
@@ -163,6 +167,25 @@ public class IncomeTransactionRestServiceImpl implements IncomeTransactionRestSe
     }
 
     @Override
+    @Transactional
+    public void softDelete(UUID id, String currentUsername) {
+        IncomeTransaction transaction = incomeTransactionRepository.findById(id)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Transaksi tidak ditemukan"));
+        if ("INACTIVE".equals(transaction.getStatus())) {
+            throw new IllegalArgumentException("Transaksi sudah dinonaktifkan");
+        }
+        User deletedByUser = userRepository.findByUsername(currentUsername)
+                .orElseThrow(() -> new IllegalArgumentException("User tidak ditemukan"));
+        if (!hasRole(deletedByUser, ROLE_KETUA_YAYASAN)) {
+            throw new IllegalArgumentException("Hanya Ketua Yayasan yang dapat menonaktifkan transaksi pemasukan");
+        }
+        transaction.setStatus("INACTIVE");
+        transaction.setDeletedAt(LocalDateTime.now());
+        transaction.setDeletedBy(deletedByUser);
+        incomeTransactionRepository.save(transaction);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public IncomeTransactionListResponseDTO list(
             String startDateStr,
@@ -291,7 +314,161 @@ public class IncomeTransactionRestServiceImpl implements IncomeTransactionRestSe
     public IncomeTransactionResponseDTO getById(UUID id) {
         IncomeTransaction transaction = incomeTransactionRepository.findById(id)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Transaksi tidak ditemukan"));
+        if (!"CONFIRMED".equals(transaction.getStatus())) {
+            throw new jakarta.persistence.EntityNotFoundException("Transaksi tidak ditemukan");
+        }
         return toResponseDTO(transaction);
+    }
+
+    @Override
+    @Transactional
+    public IncomeTransactionResponseDTO update(
+            UUID id,
+            String transactionDateStr,
+            String category,
+            String sourceType,
+            String paymentMethod,
+            String amountStr,
+            String note,
+            String donorName,
+            MultipartFile proofFile,
+            String currentUsername
+    ) {
+        IncomeTransaction transaction = incomeTransactionRepository.findById(id)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Transaksi tidak ditemukan"));
+
+        if (!"CONFIRMED".equals(transaction.getStatus())) {
+            throw new IllegalArgumentException("Transaksi sudah dinonaktifkan dan tidak dapat diubah");
+        }
+
+        User updatedByUser = userRepository.findByUsername(currentUsername)
+                .orElseThrow(() -> new IllegalArgumentException("User tidak ditemukan"));
+
+        boolean isKetua = hasRole(updatedByUser, ROLE_KETUA_YAYASAN);
+        boolean isPengurus = hasRole(updatedByUser, ROLE_PENGURUS);
+
+        if (!isKetua && !isPengurus) {
+            throw new IllegalArgumentException("Anda tidak memiliki akses untuk mengubah transaksi ini");
+        }
+
+        if (isPengurus) {
+            if (transaction.getCreatedBy() == null
+                    || transaction.getCreatedBy().getUserId() == null
+                    || !transaction.getCreatedBy().getUserId().equals(updatedByUser.getUserId())) {
+                throw new IllegalArgumentException("Pengurus hanya dapat mengubah transaksi yang dibuat sendiri");
+            }
+
+            LocalDateTime createdAt = transaction.getCreatedAt();
+            if (createdAt == null || Duration.between(createdAt, LocalDateTime.now()).toMinutes() > 30) {
+                throw new IllegalArgumentException("Batas waktu edit 30 menit telah terlewati");
+            }
+
+            int editCount = transaction.getPengurusEditCount() == null ? 0 : transaction.getPengurusEditCount();
+            if (editCount >= 1) {
+                throw new IllegalArgumentException("Kuota edit Pengurus untuk transaksi ini sudah habis");
+            }
+        }
+
+        if (transactionDateStr == null || transactionDateStr.isBlank()) {
+            throw new IllegalArgumentException("Tanggal transaksi wajib diisi");
+        }
+        if (category == null || category.isBlank()) {
+            throw new IllegalArgumentException("Kategori pemasukan wajib diisi");
+        }
+        if (sourceType == null || sourceType.isBlank()) {
+            throw new IllegalArgumentException("Sumber donasi wajib diisi");
+        }
+        if (paymentMethod == null || paymentMethod.isBlank()) {
+            throw new IllegalArgumentException("Metode pembayaran wajib diisi");
+        }
+        if (amountStr == null || amountStr.isBlank()) {
+            throw new IllegalArgumentException("Nominal wajib diisi");
+        }
+
+        IncomeCategory incomeCategory;
+        try {
+            String catUpper = category.toUpperCase().replace("-", "_");
+            incomeCategory = IncomeCategory.valueOf(catUpper);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Kategori tidak valid. Nilai yang diterima: DONASI, ZAKAT, INFAQ, LAIN_LAIN");
+        }
+
+        PaymentMethod method;
+        try {
+            method = PaymentMethod.valueOf(paymentMethod.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Metode pembayaran tidak valid. Nilai yang diterima: CASH, TRANSFER");
+        }
+
+        SourceType srcType;
+        try {
+            srcType = SourceType.valueOf(sourceType.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Sumber donasi tidak valid. Nilai yang diterima: INDIVIDU, KOMUNITAS, PERUSAHAAN");
+        }
+
+        LocalDate transactionDate;
+        try {
+            transactionDate = LocalDate.parse(transactionDateStr.trim(), DATE_FORMATTER);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Format tanggal tidak valid. Gunakan format YYYY-MM-DD");
+        }
+
+        BigDecimal amount;
+        try {
+            amount = new BigDecimal(amountStr.trim().replace(",", "."));
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Nominal harus berupa angka");
+        }
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Nominal harus lebih dari 0");
+        }
+
+        String proofFilePath = transaction.getProofFilePath();
+        if (proofFile != null && !proofFile.isEmpty()) {
+            String contentType = proofFile.getContentType();
+            if (contentType == null || (!ALLOWED_IMAGE_TYPES.contains(contentType) && !ALLOWED_DOC_TYPES.contains(contentType))) {
+                throw new IllegalArgumentException("Format file tidak didukung. Gunakan gambar (JPEG, PNG, GIF, WebP) atau PDF");
+            }
+            try {
+                String originalFilename = proofFile.getOriginalFilename();
+                String extension = originalFilename != null && originalFilename.contains(".")
+                        ? originalFilename.substring(originalFilename.lastIndexOf("."))
+                        : "";
+                String storagePath = UUID.randomUUID() + extension;
+                String resourceType = ALLOWED_DOC_TYPES.contains(contentType) ? "raw" : "image";
+                proofFilePath = cloudinaryStorageService.uploadFile(
+                        proofFile, storagePath, CLOUDINARY_FOLDER, resourceType
+                );
+            } catch (IOException e) {
+                throw new RuntimeException("Gagal mengupload file bukti ke Cloudinary: " + e.getMessage());
+            }
+        }
+
+        transaction.setTransactionDate(transactionDate);
+        transaction.setCategory(incomeCategory);
+        transaction.setSourceType(srcType);
+        transaction.setPaymentMethod(method);
+        transaction.setAmount(amount);
+        transaction.setDonorName(donorName != null && !donorName.isBlank() ? donorName.trim() : null);
+        transaction.setNote(note != null && !note.isBlank() ? note.trim() : null);
+        transaction.setProofFilePath(proofFilePath);
+        transaction.setUpdatedBy(updatedByUser);
+        if (isPengurus) {
+            int editCount = transaction.getPengurusEditCount() == null ? 0 : transaction.getPengurusEditCount();
+            transaction.setPengurusEditCount(editCount + 1);
+        }
+
+        incomeTransactionRepository.save(transaction);
+
+        return toResponseDTO(transaction);
+    }
+
+    private boolean hasRole(User user, String role) {
+        if (user == null || user.getRole() == null) {
+            return false;
+        }
+        return role.equalsIgnoreCase(user.getRole().trim());
     }
 
     private IncomeTransactionResponseDTO toResponseDTO(IncomeTransaction t) {
@@ -308,6 +485,8 @@ public class IncomeTransactionRestServiceImpl implements IncomeTransactionRestSe
                 .status(t.getStatus())
                 .createdByUsername(t.getCreatedBy().getUsername())
                 .createdAt(t.getCreatedAt())
+                .updatedAt(t.getUpdatedAt())
+                .updatedByUsername(t.getUpdatedBy() != null ? t.getUpdatedBy().getUsername() : null)
                 .build();
     }
 }

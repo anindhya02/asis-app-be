@@ -168,11 +168,134 @@ public class IncomeTransactionRestController {
         }
     }
 
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<BaseResponseDTO<IncomeTransactionResponseDTO>> update(
+            @PathVariable UUID id,
+            @RequestParam("transactionDate") String transactionDate,
+            @RequestParam("category") String category,
+            @RequestParam("sourceType") String sourceType,
+            @RequestParam("paymentMethod") String paymentMethod,
+            @RequestParam("amount") String amount,
+            @RequestParam(value = "note", required = false) String note,
+            @RequestParam(value = "donorName", required = false) String donorName,
+            @RequestParam(value = "proofFile", required = false) MultipartFile proofFile
+    ) {
+        try {
+            String currentUsername = jwtUtils.getCurrentUsername();
+            if (currentUsername == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+                        BaseResponseDTO.<IncomeTransactionResponseDTO>builder()
+                                .status("error")
+                                .message("Unauthorized - Silakan login terlebih dahulu")
+                                .data(null)
+                                .build()
+                );
+            }
+
+            IncomeTransactionResponseDTO response = incomeTransactionService.update(
+                    id,
+                    transactionDate,
+                    category,
+                    sourceType,
+                    paymentMethod,
+                    amount,
+                    note,
+                    donorName,
+                    proofFile,
+                    currentUsername
+            );
+
+            return ResponseEntity.ok(
+                    BaseResponseDTO.<IncomeTransactionResponseDTO>builder()
+                            .status("success")
+                            .message("Transaksi pemasukan berhasil diperbarui")
+                            .data(response)
+                            .build()
+            );
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                    BaseResponseDTO.<IncomeTransactionResponseDTO>builder()
+                            .status("error")
+                            .message("Transaksi tidak ditemukan")
+                            .data(null)
+                            .build()
+            );
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(
+                    BaseResponseDTO.<IncomeTransactionResponseDTO>builder()
+                            .status("error")
+                            .message(e.getMessage())
+                            .data(null)
+                            .build()
+            );
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    BaseResponseDTO.<IncomeTransactionResponseDTO>builder()
+                            .status("error")
+                            .message("Terjadi kesalahan: " + e.getMessage())
+                            .data(null)
+                            .build()
+            );
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<BaseResponseDTO<Void>> softDelete(@PathVariable UUID id) {
+        try {
+            String currentUsername = jwtUtils.getCurrentUsername();
+            if (currentUsername == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+                        BaseResponseDTO.<Void>builder()
+                                .status("error")
+                                .message("Unauthorized - Silakan login terlebih dahulu")
+                                .data(null)
+                                .build()
+                );
+            }
+
+            incomeTransactionService.softDelete(id, currentUsername);
+
+            return ResponseEntity.ok(
+                    BaseResponseDTO.<Void>builder()
+                            .status("success")
+                            .message("Transaksi berhasil dinonaktifkan")
+                            .data(null)
+                            .build()
+            );
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                    BaseResponseDTO.<Void>builder()
+                            .status("error")
+                            .message("Transaksi tidak ditemukan")
+                            .data(null)
+                            .build()
+            );
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(
+                    BaseResponseDTO.<Void>builder()
+                            .status("error")
+                            .message(e.getMessage())
+                            .data(null)
+                            .build()
+            );
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    BaseResponseDTO.<Void>builder()
+                            .status("error")
+                            .message("Terjadi kesalahan: " + e.getMessage())
+                            .data(null)
+                            .build()
+            );
+        }
+    }
+
     @GetMapping("/{id}/proof")
     public ResponseEntity<?> getProofFile(@PathVariable UUID id) {
         IncomeTransaction transaction = incomeTransactionRepository.findById(id)
                 .orElse(null);
-        if (transaction == null || transaction.getProofFilePath() == null
+        if (transaction == null
+                || !"CONFIRMED".equals(transaction.getStatus())
+                || transaction.getProofFilePath() == null
                 || transaction.getProofFilePath().isBlank()) {
             return ResponseEntity.notFound().build();
         }

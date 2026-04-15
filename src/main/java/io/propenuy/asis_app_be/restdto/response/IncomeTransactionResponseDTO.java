@@ -24,4 +24,6 @@ public class IncomeTransactionResponseDTO {
     private String status;
     private String createdByUsername;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private String updatedByUsername;
 }

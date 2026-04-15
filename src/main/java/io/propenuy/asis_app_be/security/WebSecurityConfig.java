@@ -21,6 +21,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.List;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.http.HttpMethod;
 
 @Configuration
 @EnableWebSecurity
@@ -46,7 +47,9 @@ public class WebSecurityConfig {
 
                 // ================= ROLE BASED =================
                 .requestMatchers("/api/users/**").hasAuthority("ADMIN")
-                .requestMatchers("/api/income-transactions/**").hasAnyAuthority("ADMIN", "PENGURUS")
+                .requestMatchers(HttpMethod.POST, "/api/income-transactions/**").hasAuthority("PENGURUS")
+                .requestMatchers(HttpMethod.DELETE, "/api/income-transactions/**").hasAuthority("KETUA YAYASAN")
+                .requestMatchers("/api/income-transactions/**").hasAnyAuthority("PENGURUS", "KETUA YAYASAN")
                 .requestMatchers("/api/expense-transactions/**").hasAnyAuthority("ADMIN", "PENGURUS")
                 .requestMatchers("/api/activities/**").hasAnyAuthority("ADMIN", "PENGURUS")
                 .requestMatchers("/api/payment-requests/**").hasAnyAuthority("ADMIN", "PENGURUS", "KETUA YAYASAN")
