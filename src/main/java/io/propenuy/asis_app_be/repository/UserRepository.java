@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.*;
 
 public interface UserRepository extends JpaRepository<User, UUID> {
     boolean existsByUsername(String username);
+    boolean existsByUsernameAndUserIdNot(String username, UUID userId);
     List<User> findByNamaContainingIgnoreCase(String nama);
     List<User> findByRole(String role);
     List<User> findAll();
