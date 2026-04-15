@@ -30,4 +30,16 @@ public interface ExpenseTransactionRestService {
     );
 
     ExpenseTransactionResponseDTO getById(String id);
+
+    ExpenseTransactionResponseDTO update(
+            String id,
+            String category,
+            String subCategory,
+            String program,
+            String penerimaDana,
+            String note,
+            String currentUsername
+    );
+
+    void softDelete(String id, String currentUsername);
 }

@@ -9,6 +9,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -19,6 +21,7 @@ import io.propenuy.asis_app_be.repository.ExpenseTransactionRepository;
 import io.propenuy.asis_app_be.restdto.response.BaseResponseDTO;
 import io.propenuy.asis_app_be.restdto.response.ExpenseTransactionListResponseDTO;
 import io.propenuy.asis_app_be.restdto.response.ExpenseTransactionResponseDTO;
+import io.propenuy.asis_app_be.restservice.ExpenseEditForbiddenException;
 import io.propenuy.asis_app_be.restservice.ExpenseTransactionRestService;
 import io.propenuy.asis_app_be.security.jwt.JwtUtils;
 import lombok.RequiredArgsConstructor;
@@ -177,6 +180,152 @@ public class ExpenseTransactionRestController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                     BaseResponseDTO.<ExpenseTransactionResponseDTO>builder()
+                            .status("error")
+                            .message("Terjadi kesalahan: " + e.getMessage())
+                            .data(null)
+                            .build()
+            );
+        }
+    }
+
+    @PutMapping(path = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<BaseResponseDTO<ExpenseTransactionResponseDTO>> update(
+            @PathVariable("id") String id,
+            @RequestParam("category") String category,
+            @RequestParam(value = "subCategory", required = false) String subCategory,
+            @RequestParam("program") String program,
+            @RequestParam("penerimaDana") String penerimaDana,
+            @RequestParam(value = "note", required = false) String note
+    ) {
+        try {
+            String currentUsername = jwtUtils.getCurrentUsername();
+            if (currentUsername == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+                        BaseResponseDTO.<ExpenseTransactionResponseDTO>builder()
+                                .status("error")
+                                .message("Unauthorized - Silakan login terlebih dahulu")
+                                .data(null)
+                                .build()
+                );
+            }
+
+            ExpenseTransactionResponseDTO response = expenseTransactionService.update(
+                    id,
+                    category,
+                    subCategory,
+                    program,
+                    penerimaDana,
+                    note,
+                    currentUsername
+            );
+
+            return ResponseEntity.ok(
+                    BaseResponseDTO.<ExpenseTransactionResponseDTO>builder()
+                            .status("success")
+                            .message("Transaksi berhasil diperbarui")
+                            .data(response)
+                            .build()
+            );
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                    BaseResponseDTO.<ExpenseTransactionResponseDTO>builder()
+                            .status("error")
+                            .message(e.getMessage())
+                            .data(null)
+                            .build()
+            );
+        } catch (ExpenseEditForbiddenException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                    BaseResponseDTO.<ExpenseTransactionResponseDTO>builder()
+                            .status("error")
+                            .message(e.getMessage())
+                            .data(null)
+                            .build()
+            );
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                    BaseResponseDTO.<ExpenseTransactionResponseDTO>builder()
+                            .status("error")
+                            .message(e.getMessage())
+                            .data(null)
+                            .build()
+            );
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(
+                    BaseResponseDTO.<ExpenseTransactionResponseDTO>builder()
+                            .status("error")
+                            .message(e.getMessage())
+                            .data(null)
+                            .build()
+            );
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    BaseResponseDTO.<ExpenseTransactionResponseDTO>builder()
+                            .status("error")
+                            .message("Terjadi kesalahan: " + e.getMessage())
+                            .data(null)
+                            .build()
+            );
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<BaseResponseDTO<Void>> softDelete(@PathVariable("id") String id) {
+        try {
+            String currentUsername = jwtUtils.getCurrentUsername();
+            if (currentUsername == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+                        BaseResponseDTO.<Void>builder()
+                                .status("error")
+                                .message("Unauthorized - Silakan login terlebih dahulu")
+                                .data(null)
+                                .build()
+                );
+            }
+
+            expenseTransactionService.softDelete(id, currentUsername);
+            return ResponseEntity.ok(
+                    BaseResponseDTO.<Void>builder()
+                            .status("success")
+                            .message("Transaksi berhasil dinonaktifkan")
+                            .data(null)
+                            .build()
+            );
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                    BaseResponseDTO.<Void>builder()
+                            .status("error")
+                            .message(e.getMessage())
+                            .data(null)
+                            .build()
+            );
+        } catch (ExpenseEditForbiddenException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                    BaseResponseDTO.<Void>builder()
+                            .status("error")
+                            .message(e.getMessage())
+                            .data(null)
+                            .build()
+            );
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                    BaseResponseDTO.<Void>builder()
+                            .status("error")
+                            .message(e.getMessage())
+                            .data(null)
+                            .build()
+            );
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(
+                    BaseResponseDTO.<Void>builder()
+                            .status("error")
+                            .message(e.getMessage())
+                            .data(null)
+                            .build()
+            );
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    BaseResponseDTO.<Void>builder()
                             .status("error")
                             .message("Terjadi kesalahan: " + e.getMessage())
                             .data(null)

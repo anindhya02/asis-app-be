@@ -74,9 +74,19 @@ public class ExpenseTransaction {
     @JoinColumn(name = "created_by_user_id", nullable = false)
     private User createdBy;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "updated_by_user_id")
+    private User updatedBy;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
     private LocalDateTime updatedAt;
+
+    private LocalDateTime deletedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "deleted_by_user_id")
+    private User deletedBy;
 }
