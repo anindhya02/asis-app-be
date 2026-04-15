@@ -56,6 +56,10 @@ public class IncomeTransaction {
     @Builder.Default
     private String status = "CONFIRMED";
 
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer pengurusEditCount = 0;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by_user_id", nullable = false)
     private User createdBy;
