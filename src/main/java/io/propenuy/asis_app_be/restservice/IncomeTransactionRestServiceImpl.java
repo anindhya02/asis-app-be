@@ -176,6 +176,9 @@ public class IncomeTransactionRestServiceImpl implements IncomeTransactionRestSe
         }
         User deletedByUser = userRepository.findByUsername(currentUsername)
                 .orElseThrow(() -> new IllegalArgumentException("User tidak ditemukan"));
+        if (!hasRole(deletedByUser, ROLE_KETUA_YAYASAN)) {
+            throw new IllegalArgumentException("Hanya Ketua Yayasan yang dapat menonaktifkan transaksi pemasukan");
+        }
         transaction.setStatus("INACTIVE");
         transaction.setDeletedAt(LocalDateTime.now());
         transaction.setDeletedBy(deletedByUser);
