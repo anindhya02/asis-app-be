@@ -3,7 +3,6 @@ package io.propenuy.asis_app_be.model;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -46,6 +45,9 @@ public class ExpenseTransaction {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ExpenseCategory category;
+
+    @Column
+    private String subCategory;
 
     @Column(nullable = false)
     private String program;
