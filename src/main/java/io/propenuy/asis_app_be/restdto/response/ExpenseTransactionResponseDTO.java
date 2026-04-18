@@ -15,10 +15,9 @@ public class ExpenseTransactionResponseDTO {
     private UUID id;
     private LocalDate transactionDate;
     private String category;
-    private String program;
+    private String subCategory;
     private BigDecimal amount;
     private String paymentMethod;
-    private String penerimaDana;
     private String note;
     private String proofFilePath;
     private String status;

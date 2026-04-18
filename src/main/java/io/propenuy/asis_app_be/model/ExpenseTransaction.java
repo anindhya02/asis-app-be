@@ -2,7 +2,6 @@ package io.propenuy.asis_app_be.model;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -49,18 +48,12 @@ public class ExpenseTransaction {
     @Column
     private String subCategory;
 
-    @Column(nullable = false)
-    private String program;
-
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal amount;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PaymentMethod paymentMethod;
-
-    @Column(nullable = false)
-    private String penerimaDana;
 
     @Column(length = 1000)
     private String note;

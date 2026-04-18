@@ -14,10 +14,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class CreateExpenseTransactionRequestDTO {
     private LocalDate transactionDate;
-    private String category; 
-    private String program;
+    private String category;
+    private String subCategory;
     private BigDecimal amount;
-    private String paymentMethod; 
-    private String penerimaDana;
+    private String paymentMethod;
     private String note;
 }
