@@ -83,6 +83,14 @@ public class ExpenseTransactionRestController {
                             .data(null)
                             .build()
             );
+        } catch (ExpenseEditForbiddenException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                    BaseResponseDTO.<ExpenseTransactionResponseDTO>builder()
+                            .status("error")
+                            .message(e.getMessage())
+                            .data(null)
+                            .build()
+            );
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                     BaseResponseDTO.<ExpenseTransactionResponseDTO>builder()
