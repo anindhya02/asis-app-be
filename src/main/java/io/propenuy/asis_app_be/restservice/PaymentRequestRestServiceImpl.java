@@ -125,14 +125,19 @@ public class PaymentRequestRestServiceImpl implements PaymentRequestRestService 
         // Resolve the current user to check role
         User currentUser = userRepository.findByUsername(currentUsername)
                 .orElseThrow(() -> new IllegalArgumentException("User tidak ditemukan"));
-        final boolean isKetuaYayasan = "KETUA YAYASAN".equalsIgnoreCase(currentUser.getRole());
+        String role = currentUser.getRole() == null ? "" : currentUser.getRole().trim();
+        final boolean isAdmin = "ADMIN".equalsIgnoreCase(role);
+        final boolean isKetuaYayasan = "KETUA YAYASAN".equalsIgnoreCase(role);
 
         Specification<PaymentRequest> spec = (root, query, cb) -> {
             List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
 
-            // Pengurus can only see their own tickets; Ketua Yayasan sees all
-            if (!isKetuaYayasan) {
+            // Admin: all tickets. Ketua Yayasan: all tickets except DRAFT. Pengurus: own tickets only (incl. own drafts).
+            if (!isAdmin && !isKetuaYayasan) {
                 predicates.add(cb.equal(root.get("createdBy").get("username"), currentUsername));
+            }
+            if (isKetuaYayasan) {
+                predicates.add(cb.notEqual(root.get("status"), PaymentRequestStatus.DRAFT));
             }
 
             if (startDate != null) {
@@ -150,7 +155,7 @@ public class PaymentRequestRestServiceImpl implements PaymentRequestRestService 
             if (searchTerm != null) {
                 jakarta.persistence.criteria.Predicate searchPredicate = cb.or(
                         cb.like(cb.lower(root.get("title")), "%" + searchTerm + "%"),
-                        cb.like(cb.lower(root.get("purpose")), "%" + searchTerm + "%")
+                        cb.like(cb.lower(cb.coalesce(root.get("notes"), "")), "%" + searchTerm + "%")
                 );
                 predicates.add(searchPredicate);
             }
@@ -180,10 +185,8 @@ public class PaymentRequestRestServiceImpl implements PaymentRequestRestService 
             String neededDateStr,
             String expenseCategoryStr,
             String subCategory,
-            String program,
             String amountStr,
             String paymentMethodStr,
-            String purpose,
             String notes,
             String breakdownListJson,
             String submitStr,
@@ -194,37 +197,32 @@ public class PaymentRequestRestServiceImpl implements PaymentRequestRestService 
 
         // --- Validation ---
         if (isSubmit) {
-            // Strict validation for submit
             if (title == null || title.isBlank()) {
                 throw new IllegalArgumentException("Judul pengajuan wajib diisi");
             }
             if (neededDateStr == null || neededDateStr.isBlank()) {
-                throw new IllegalArgumentException("Tanggal kebutuhan dana wajib diisi");
+                throw new IllegalArgumentException("Tanggal pengajuan wajib diisi");
             }
             if (expenseCategoryStr == null || expenseCategoryStr.isBlank()) {
                 throw new IllegalArgumentException("Kategori pengeluaran wajib dipilih");
             }
-            if (program == null || program.isBlank()) {
-                throw new IllegalArgumentException("Program terkait wajib dipilih");
-            }
             if (amountStr == null || amountStr.isBlank()) {
-                throw new IllegalArgumentException("Nominal wajib diisi");
+                throw new IllegalArgumentException("Nominal penggunaan dana wajib diisi");
+            }
+            if (subCategory == null || subCategory.isBlank()) {
+                throw new IllegalArgumentException("Sub-kategori wajib diisi");
             }
             if (paymentMethodStr == null || paymentMethodStr.isBlank()) {
                 throw new IllegalArgumentException("Metode pembayaran wajib dipilih");
             }
-            if (purpose == null || purpose.isBlank()) {
-                throw new IllegalArgumentException("Penerima dana wajib diisi");
-            }
             if (supportingDocument == null || supportingDocument.isEmpty()) {
-                throw new IllegalArgumentException("Dokumen pendukung wajib diunggah sebelum submit");
+                throw new IllegalArgumentException("Dokumen pendukung wajib diunggah");
             }
         } else {
-            // Draft: require title, needed date, and expense category
             if ((title == null || title.isBlank())
                     || (expenseCategoryStr == null || expenseCategoryStr.isBlank())
                     || (neededDateStr == null || neededDateStr.isBlank())) {
-                throw new IllegalArgumentException("Minimal isi judul, tanggal, kategori untuk menyimpan draft.");
+                throw new IllegalArgumentException("Minimal isi judul, tanggal pengajuan, dan kategori untuk menyimpan draft.");
             }
         }
 
@@ -243,16 +241,13 @@ public class PaymentRequestRestServiceImpl implements PaymentRequestRestService 
             expenseCategory = ExpenseCategory.LAIN_LAIN;
         }
 
-        // Parse neededDate
+        // Parse neededDate (tanggal pengajuan)
         LocalDate neededDate = null;
         if (neededDateStr != null && !neededDateStr.isBlank()) {
             try {
                 neededDate = LocalDate.parse(neededDateStr.trim(), DATE_FORMATTER);
             } catch (Exception e) {
                 throw new IllegalArgumentException("Format tanggal tidak valid. Gunakan format YYYY-MM-DD");
-            }
-            if (neededDate.isBefore(LocalDate.now())) {
-                throw new IllegalArgumentException("Tanggal kebutuhan dana tidak boleh kurang dari hari ini");
             }
         }
 
@@ -262,10 +257,10 @@ public class PaymentRequestRestServiceImpl implements PaymentRequestRestService 
             try {
                 amount = new BigDecimal(amountStr.trim().replace(",", "."));
             } catch (NumberFormatException e) {
-                throw new IllegalArgumentException("Nominal harus berupa angka");
+                throw new IllegalArgumentException("Nominal penggunaan dana harus berupa angka");
             }
             if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-                throw new IllegalArgumentException("Nominal harus lebih dari 0");
+                throw new IllegalArgumentException("Nominal penggunaan dana harus lebih dari 0");
             }
         } else {
             amount = BigDecimal.ZERO;
@@ -291,38 +286,69 @@ public class PaymentRequestRestServiceImpl implements PaymentRequestRestService 
             }
         }
 
-        // Validate breakdown items
-        BigDecimal breakdownTotal = BigDecimal.ZERO;
-        for (int i = 0; i < breakdownItems.size(); i++) {
-            Map<String, String> item = breakdownItems.get(i);
-            String desc = item.get("description");
-            String itemAmountStr = item.get("amount");
-
-            if (desc == null || desc.isBlank()) {
-                throw new IllegalArgumentException("Deskripsi rincian item ke-" + (i + 1) + " wajib diisi");
+        if (isSubmit) {
+            if (breakdownItems.isEmpty()) {
+                throw new IllegalArgumentException("Rincian penggunaan dana wajib diisi minimal satu item");
             }
-            if (itemAmountStr == null || itemAmountStr.isBlank()) {
-                throw new IllegalArgumentException("Nominal rincian item ke-" + (i + 1) + " wajib diisi");
+            if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalArgumentException("Nominal penggunaan dana harus lebih dari 0");
             }
-
-            BigDecimal itemAmount;
-            try {
-                itemAmount = new BigDecimal(itemAmountStr.trim().replace(",", "."));
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException("Nominal rincian item ke-" + (i + 1) + " harus berupa angka");
-            }
-            if (itemAmount.compareTo(BigDecimal.ZERO) <= 0) {
-                throw new IllegalArgumentException("Nominal rincian item ke-" + (i + 1) + " harus lebih dari 0");
-            }
-
-            breakdownTotal = breakdownTotal.add(itemAmount);
         }
 
-        // Validate breakdown total equals amount (only when there are items and amount > 0)
-        if (!breakdownItems.isEmpty() && amount.compareTo(BigDecimal.ZERO) > 0) {
+        // Validate breakdown items (strict on submit; draft keeps only complete rows)
+        BigDecimal breakdownTotal = BigDecimal.ZERO;
+        if (isSubmit) {
+            for (int i = 0; i < breakdownItems.size(); i++) {
+                Map<String, String> item = breakdownItems.get(i);
+                String desc = item.get("description");
+                String itemAmountStr = item.get("amount");
+
+                if (desc == null || desc.isBlank()) {
+                    throw new IllegalArgumentException("Deskripsi rincian item ke-" + (i + 1) + " wajib diisi");
+                }
+                if (itemAmountStr == null || itemAmountStr.isBlank()) {
+                    throw new IllegalArgumentException("Nominal rincian item ke-" + (i + 1) + " wajib diisi");
+                }
+
+                BigDecimal itemAmount;
+                try {
+                    itemAmount = new BigDecimal(itemAmountStr.trim().replace(",", "."));
+                } catch (NumberFormatException e) {
+                    throw new IllegalArgumentException("Nominal rincian item ke-" + (i + 1) + " harus berupa angka");
+                }
+                if (itemAmount.compareTo(BigDecimal.ZERO) <= 0) {
+                    throw new IllegalArgumentException("Nominal rincian item ke-" + (i + 1) + " harus lebih dari 0");
+                }
+
+                breakdownTotal = breakdownTotal.add(itemAmount);
+            }
             if (breakdownTotal.compareTo(amount) != 0) {
                 throw new IllegalArgumentException(
-                        "Total rincian (Rp " + breakdownTotal.toPlainString() + ") harus sama dengan nominal dana diajukan (Rp " + amount.toPlainString() + ")"
+                        "Total rincian (Rp " + breakdownTotal.toPlainString() + ") harus sama dengan nominal penggunaan dana (Rp " + amount.toPlainString() + ")"
+                );
+            }
+        } else {
+            List<Map<String, String>> completeOnly = new ArrayList<>();
+            for (Map<String, String> item : breakdownItems) {
+                String desc = item.get("description");
+                String itemAmountStr = item.get("amount");
+                if (desc != null && !desc.isBlank() && itemAmountStr != null && !itemAmountStr.isBlank()) {
+                    completeOnly.add(item);
+                }
+            }
+            breakdownItems = completeOnly;
+            for (Map<String, String> item : breakdownItems) {
+                try {
+                    BigDecimal itemAmount = new BigDecimal(item.get("amount").trim().replace(",", "."));
+                    breakdownTotal = breakdownTotal.add(itemAmount);
+                } catch (NumberFormatException e) {
+                    throw new IllegalArgumentException("Format rincian penggunaan dana tidak valid");
+                }
+            }
+            if (!breakdownItems.isEmpty() && amount.compareTo(BigDecimal.ZERO) > 0
+                    && breakdownTotal.compareTo(amount) != 0) {
+                throw new IllegalArgumentException(
+                        "Total rincian (Rp " + breakdownTotal.toPlainString() + ") harus sama dengan nominal penggunaan dana (Rp " + amount.toPlainString() + ")"
                 );
             }
         }
@@ -363,14 +389,12 @@ public class PaymentRequestRestServiceImpl implements PaymentRequestRestService 
         // Build entity
         PaymentRequest paymentRequest = PaymentRequest.builder()
                 .title(title != null ? title.trim() : "")
-                .purpose(purpose != null ? purpose.trim() : "")
+                .purpose("")
                 .amount(amount)
                 .expenseCategory(expenseCategory)
                 .subCategory(subCategory != null && !subCategory.isBlank() ? subCategory.trim() : null)
-                .program(program != null && !program.isBlank() ? program.trim() : null)
                 .neededDate(neededDate)
                 .paymentMethod(paymentMethod)
-                .recipient(purpose != null ? purpose.trim() : null)
                 .notes(notes != null && !notes.isBlank() ? notes.trim() : null)
                 .supportingDocumentUrl(documentUrl)
                 .supportingDocumentName(documentName)
@@ -413,14 +437,11 @@ public class PaymentRequestRestServiceImpl implements PaymentRequestRestService 
         return PaymentRequestResponseDTO.builder()
                 .id(pr.getId())
                 .title(pr.getTitle())
-                .purpose(pr.getPurpose())
                 .amount(pr.getAmount())
                 .expenseCategory(pr.getExpenseCategory().name())
                 .subCategory(pr.getSubCategory())
-                .program(pr.getProgram())
                 .neededDate(pr.getNeededDate())
                 .paymentMethod(pr.getPaymentMethod() != null ? pr.getPaymentMethod().name() : null)
-                .recipient(pr.getRecipient())
                 .notes(pr.getNotes())
                 .supportingDocumentUrl(pr.getSupportingDocumentUrl())
                 .supportingDocumentName(pr.getSupportingDocumentName())

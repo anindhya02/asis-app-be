@@ -18,14 +18,11 @@ import lombok.NoArgsConstructor;
 public class PaymentRequestResponseDTO {
     private UUID id;
     private String title;
-    private String purpose;
     private BigDecimal amount;
     private String expenseCategory;
     private String subCategory;
-    private String program;
     private LocalDate neededDate;
     private String paymentMethod;
-    private String recipient;
     private String notes;
     private String supportingDocumentUrl;
     private String supportingDocumentName;

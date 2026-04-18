@@ -46,7 +46,10 @@ public class PaymentRequest {
     @Column(nullable = false)
     private String title;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    /**
+     * Legacy column retained for existing databases; not used by the ticket API anymore.
+     */
+    @Column(columnDefinition = "TEXT")
     private String purpose;
 
     @Column(nullable = false, precision = 19, scale = 2)
@@ -60,17 +63,11 @@ public class PaymentRequest {
     private String subCategory;
 
     @Column
-    private String program;
-
-    @Column
     private LocalDate neededDate;
 
     @Enumerated(EnumType.STRING)
     @Column
     private PaymentMethod paymentMethod;
-
-    @Column
-    private String recipient;
 
     @Column(columnDefinition = "TEXT")
     private String notes;
