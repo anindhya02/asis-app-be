@@ -31,6 +31,7 @@ public class PaymentRequestResponseDTO {
     private String createdByUsername;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private String updatedByUsername;
 
     @Data
     @Builder
