@@ -9,10 +9,9 @@ public interface ExpenseTransactionRestService {
     ExpenseTransactionResponseDTO create(
             String transactionDateStr,
             String category,
-            String program,
+            String subCategory,
             String paymentMethod,
             String amountStr,
-            String penerimaDana,
             String note,
             MultipartFile proofFile,
             String currentUsername
@@ -22,7 +21,6 @@ public interface ExpenseTransactionRestService {
             String startDateStr,
             String endDateStr,
             String category,
-            String program,
             String paymentMethod,
             String search,
             int page,
@@ -35,8 +33,6 @@ public interface ExpenseTransactionRestService {
             String id,
             String category,
             String subCategory,
-            String program,
-            String penerimaDana,
             String note,
             String currentUsername
     );

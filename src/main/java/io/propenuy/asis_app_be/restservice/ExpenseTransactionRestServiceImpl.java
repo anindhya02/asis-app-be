@@ -30,6 +30,7 @@ import io.propenuy.asis_app_be.repository.IncomeTransactionRepository;
 import io.propenuy.asis_app_be.repository.UserRepository;
 import io.propenuy.asis_app_be.restdto.response.ExpenseTransactionListResponseDTO;
 import io.propenuy.asis_app_be.restdto.response.ExpenseTransactionResponseDTO;
+import io.propenuy.asis_app_be.restservice.ExpenseCategoryRules;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -58,10 +59,9 @@ public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRest
     public ExpenseTransactionResponseDTO create(
             String transactionDateStr,
             String category,
-            String program,
+            String subCategoryStr,
             String paymentMethod,
             String amountStr,
-            String penerimaDana,
             String note,
             MultipartFile proofFile,
             String currentUsername
@@ -72,17 +72,11 @@ public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRest
         if (category == null || category.isBlank()) {
             throw new IllegalArgumentException("Kategori pengeluaran wajib diisi");
         }
-        if (program == null || program.isBlank()) {
-            throw new IllegalArgumentException("Program wajib diisi");
-        }
         if (paymentMethod == null || paymentMethod.isBlank()) {
             throw new IllegalArgumentException("Metode pembayaran wajib diisi");
         }
         if (amountStr == null || amountStr.isBlank()) {
             throw new IllegalArgumentException("Nominal wajib diisi");
-        }
-        if (penerimaDana == null || penerimaDana.isBlank()) {
-            throw new IllegalArgumentException("Penerima dana wajib diisi");
         }
         if (proofFile == null || proofFile.isEmpty()) {
             throw new IllegalArgumentException("Upload bukti transaksi wajib");
@@ -94,9 +88,15 @@ public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRest
             expenseCategory = ExpenseCategory.valueOf(catUpper);
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException(
-                    "Kategori tidak valid. Nilai yang diterima: OPERASIONAL, KONSUMSI, TRANSPORTASI, PERLENGKAPAN, PROGRAM_KEGIATAN, GAJI, INFRASTRUKTUR, LAIN_LAIN"
+                    "Kategori tidak valid. Nilai yang dikenali: "
+                            + Arrays.stream(ExpenseCategory.values())
+                                    .map(Enum::name)
+                                    .collect(Collectors.joining(", "))
             );
         }
+
+        String normalizedSub = ExpenseCategoryRules.normalizeSubCategory(subCategoryStr);
+        ExpenseCategoryRules.validateSubForMain(expenseCategory, normalizedSub);
 
         PaymentMethod method;
         try {
@@ -143,10 +143,9 @@ public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRest
         ExpenseTransaction transaction = ExpenseTransaction.builder()
                 .transactionDate(transactionDate)
                 .category(expenseCategory)
-                .program(program.trim())
+                .subCategory(normalizedSub)
                 .amount(amount)
                 .paymentMethod(method)
-                .penerimaDana(penerimaDana.trim())
                 .note(note != null && !note.isBlank() ? note.trim() : null)
                 .proofFilePath(proofFilePath)
                 .status("ACTIVE")
@@ -164,7 +163,6 @@ public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRest
             String startDateStr,
             String endDateStr,
             String category,
-            String program,
             String paymentMethod,
             String search,
             int page,
@@ -211,14 +209,15 @@ public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRest
                 expenseCategoryFilter = ExpenseCategory.valueOf(catUpper);
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException(
-                        "Kategori tidak valid. Nilai yang diterima: OPERASIONAL, KONSUMSI, TRANSPORTASI, PERLENGKAPAN, PROGRAM_KEGIATAN, GAJI, INFRASTRUKTUR, LAIN_LAIN"
+                        "Kategori tidak valid. Nilai yang dikenali: "
+                                + Arrays.stream(ExpenseCategory.values())
+                                        .map(Enum::name)
+                                        .collect(Collectors.joining(", "))
                 );
             }
         } else {
             expenseCategoryFilter = null;
         }
-
-        final String programFilter = (program != null && !program.isBlank()) ? program.trim() : null;
 
         final String searchTerm = (search != null && !search.isBlank()) ? search.trim().toLowerCase() : null;
 
@@ -242,19 +241,14 @@ public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRest
             if (expenseCategoryFilter != null) {
                 predicates.add(cb.equal(root.get("category"), expenseCategoryFilter));
             }
-            if (programFilter != null) {
-                predicates.add(cb.equal(root.get("program"), programFilter));
-            }
             if (method != null) {
                 predicates.add(cb.equal(root.get("paymentMethod"), method));
             }
             if (searchTerm != null) {
-                jakarta.persistence.criteria.Predicate searchPredicate = cb.or(
-                        cb.like(cb.lower(root.get("program")), "%" + searchTerm + "%"),
-                        cb.like(cb.lower(root.get("penerimaDana")), "%" + searchTerm + "%"),
-                        cb.like(cb.lower(root.get("note")), "%" + searchTerm + "%")
-                );
-                predicates.add(searchPredicate);
+                predicates.add(cb.like(
+                        cb.lower(cb.coalesce(root.get("note"), cb.literal(""))),
+                        "%" + searchTerm + "%"
+                ));
             }
 
             return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
@@ -301,8 +295,6 @@ public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRest
             String id,
             String category,
             String subCategoryStr,
-            String program,
-            String penerimaDana,
             String note,
             String currentUsername
     ) {
@@ -351,12 +343,6 @@ public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRest
         if (category == null || category.isBlank()) {
             throw new IllegalArgumentException("Kategori pengeluaran wajib diisi");
         }
-        if (program == null || program.isBlank()) {
-            throw new IllegalArgumentException("Program wajib diisi");
-        }
-        if (penerimaDana == null || penerimaDana.isBlank()) {
-            throw new IllegalArgumentException("Penerima dana wajib diisi");
-        }
 
         ExpenseCategory expenseCategory;
         try {
@@ -376,8 +362,6 @@ public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRest
 
         transaction.setCategory(expenseCategory);
         transaction.setSubCategory(normalizedSub);
-        transaction.setProgram(program.trim());
-        transaction.setPenerimaDana(penerimaDana.trim());
         transaction.setNote(note != null && !note.isBlank() ? note.trim() : null);
         transaction.setUpdatedBy(updatedByUser);
 
@@ -439,10 +423,9 @@ public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRest
                 .id(t.getId())
                 .transactionDate(t.getTransactionDate())
                 .category(t.getCategory().name())
-                .program(t.getProgram())
+                .subCategory(t.getSubCategory())
                 .amount(t.getAmount())
                 .paymentMethod(t.getPaymentMethod().name())
-                .penerimaDana(t.getPenerimaDana())
                 .note(t.getNote())
                 .proofFilePath(t.getProofFilePath())
                 .status(t.getStatus())

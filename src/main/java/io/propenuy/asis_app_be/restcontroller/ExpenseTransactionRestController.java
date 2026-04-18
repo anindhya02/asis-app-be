@@ -39,10 +39,9 @@ public class ExpenseTransactionRestController {
     public ResponseEntity<BaseResponseDTO<ExpenseTransactionResponseDTO>> create(
             @RequestParam("transactionDate") String transactionDate,
             @RequestParam("category") String category,
-            @RequestParam("program") String program,
+            @RequestParam(value = "subCategory", required = false) String subCategory,
             @RequestParam("paymentMethod") String paymentMethod,
             @RequestParam("amount") String amount,
-            @RequestParam("penerimaDana") String penerimaDana,
             @RequestParam(value = "note", required = false) String note,
             @RequestParam("proofFile") MultipartFile proofFile
     ) {
@@ -61,10 +60,9 @@ public class ExpenseTransactionRestController {
             ExpenseTransactionResponseDTO response = expenseTransactionService.create(
                     transactionDate,
                     category,
-                    program,
+                    subCategory,
                     paymentMethod,
                     amount,
-                    penerimaDana,
                     note,
                     proofFile,
                     currentUsername
@@ -101,7 +99,6 @@ public class ExpenseTransactionRestController {
             @RequestParam(value = "startDate", required = false) String startDate,
             @RequestParam(value = "endDate", required = false) String endDate,
             @RequestParam(value = "category", required = false) String category,
-            @RequestParam(value = "program", required = false) String program,
             @RequestParam(value = "paymentMethod", required = false) String paymentMethod,
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "page", required = false, defaultValue = "0") int page,
@@ -112,7 +109,6 @@ public class ExpenseTransactionRestController {
                     startDate,
                     endDate,
                     category,
-                    program,
                     paymentMethod,
                     search,
                     page,
@@ -193,8 +189,6 @@ public class ExpenseTransactionRestController {
             @PathVariable("id") String id,
             @RequestParam("category") String category,
             @RequestParam(value = "subCategory", required = false) String subCategory,
-            @RequestParam("program") String program,
-            @RequestParam("penerimaDana") String penerimaDana,
             @RequestParam(value = "note", required = false) String note
     ) {
         try {
@@ -213,8 +207,6 @@ public class ExpenseTransactionRestController {
                     id,
                     category,
                     subCategory,
-                    program,
-                    penerimaDana,
                     note,
                     currentUsername
             );
