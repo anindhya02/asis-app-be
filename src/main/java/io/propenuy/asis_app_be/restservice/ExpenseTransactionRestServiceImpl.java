@@ -82,6 +82,12 @@ public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRest
             throw new IllegalArgumentException("Upload bukti transaksi wajib");
         }
 
+        User createdByUser = userRepository.findByUsername(currentUsername)
+                .orElseThrow(() -> new IllegalArgumentException("User tidak ditemukan"));
+        if (hasRole(createdByUser, ROLE_KETUA_YAYASAN)) {
+            throw new ExpenseEditForbiddenException("Ketua Yayasan tidak dapat membuat transaksi pengeluaran baru");
+        }
+
         ExpenseCategory expenseCategory;
         try {
             String catUpper = category.toUpperCase().replace("-", "_").replace(" ", "_");
@@ -137,8 +143,6 @@ public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRest
             );
         }
 
-        User createdByUser = userRepository.findByUsername(currentUsername)
-                .orElseThrow(() -> new IllegalArgumentException("User tidak ditemukan"));
         String proofFilePath = saveProofFile(proofFile);
         ExpenseTransaction transaction = ExpenseTransaction.builder()
                 .transactionDate(transactionDate)
