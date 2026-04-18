@@ -2,6 +2,7 @@ package io.propenuy.asis_app_be.restservice;
 
 import org.springframework.web.multipart.MultipartFile;
 
+import io.propenuy.asis_app_be.restdto.response.PaymentRequestDetailResponseDTO;
 import io.propenuy.asis_app_be.restdto.response.PaymentRequestListResponseDTO;
 import io.propenuy.asis_app_be.restdto.response.PaymentRequestResponseDTO;
 
@@ -30,4 +31,23 @@ public interface PaymentRequestRestService {
             MultipartFile supportingDocument,
             String currentUsername
     );
+
+    PaymentRequestDetailResponseDTO getById(String id, String currentUsername);
+
+    PaymentRequestResponseDTO update(
+            String id,
+            String title,
+            String neededDate,
+            String expenseCategory,
+            String subCategory,
+            String amountStr,
+            String paymentMethod,
+            String notes,
+            String breakdownListJson,
+            String submitStr,
+            MultipartFile supportingDocument,
+            String currentUsername
+    );
+
+    void cancel(String id, String currentUsername);
 }

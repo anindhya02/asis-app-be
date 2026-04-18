@@ -46,12 +46,6 @@ public class PaymentRequest {
     @Column(nullable = false)
     private String title;
 
-    /**
-     * Legacy column retained for existing databases; not used by the ticket API anymore.
-     */
-    @Column(columnDefinition = "TEXT")
-    private String purpose;
-
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal amount;
 
@@ -91,9 +85,20 @@ public class PaymentRequest {
     @JoinColumn(name = "created_by_user_id", nullable = false)
     private User createdBy;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "updated_by_user_id")
+    private User updatedBy;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
     private LocalDateTime updatedAt;
+
+    @Column
+    private LocalDateTime cancelledAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cancelled_by_user_id")
+    private User cancelledBy;
 }
