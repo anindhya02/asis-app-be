@@ -34,6 +34,12 @@ public interface PaymentRequestRestService {
 
     PaymentRequestDetailResponseDTO getById(String id, String currentUsername);
 
+    PaymentRequestDetailResponseDTO approve(String id, String reviewNote, String currentUsername);
+
+    PaymentRequestDetailResponseDTO reject(String id, String reviewNote, String currentUsername);
+
+    PaymentRequestDetailResponseDTO requestRevision(String id, String reviewNote, String currentUsername);
+
     PaymentRequestResponseDTO update(
             String id,
             String title,

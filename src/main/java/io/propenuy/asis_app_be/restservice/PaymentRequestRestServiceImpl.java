@@ -634,6 +634,78 @@ public class PaymentRequestRestServiceImpl implements PaymentRequestRestService 
         return toDetailResponseDTO(paymentRequest, activities);
     }
 
+    @Override
+    @Transactional
+    public PaymentRequestDetailResponseDTO approve(String id, String reviewNote, String currentUsername) {
+        return processReviewAction(id, reviewNote, currentUsername, PaymentRequestStatus.APPROVED, false);
+    }
+
+    @Override
+    @Transactional
+    public PaymentRequestDetailResponseDTO reject(String id, String reviewNote, String currentUsername) {
+        return processReviewAction(id, reviewNote, currentUsername, PaymentRequestStatus.REJECTED, true);
+    }
+
+    @Override
+    @Transactional
+    public PaymentRequestDetailResponseDTO requestRevision(String id, String reviewNote, String currentUsername) {
+        return processReviewAction(id, reviewNote, currentUsername, PaymentRequestStatus.REVISION_REQUESTED, true);
+    }
+
+    private PaymentRequestDetailResponseDTO processReviewAction(
+            String id,
+            String reviewNote,
+            String currentUsername,
+            PaymentRequestStatus targetStatus,
+            boolean reviewNoteRequired
+    ) {
+        UUID uuid;
+        try {
+            uuid = UUID.fromString(id);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Format ID tidak valid");
+        }
+
+        PaymentRequest pr = paymentRequestRepository.findDetailById(uuid)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Ticket tidak ditemukan"));
+
+        User reviewer = userRepository.findByUsername(currentUsername)
+                .orElseThrow(() -> new IllegalArgumentException("User tidak ditemukan"));
+
+        String reviewerRole = reviewer.getRole() == null ? "" : reviewer.getRole().trim();
+        if (!ROLE_KETUA_YAYASAN.equalsIgnoreCase(reviewerRole)) {
+            throw new PaymentRequestAccessForbiddenException("Tidak memiliki akses");
+        }
+
+        if (pr.getStatus() != PaymentRequestStatus.PENDING_REVIEW) {
+            throw new IllegalStateException("Ticket sudah diproses / status tidak valid");
+        }
+
+        String normalizedReviewNote = reviewNote == null ? null : reviewNote.trim();
+        if (reviewNoteRequired && (normalizedReviewNote == null || normalizedReviewNote.isBlank())) {
+            throw new IllegalArgumentException("Catatan review wajib diisi");
+        }
+        if (normalizedReviewNote != null && normalizedReviewNote.isBlank()) {
+            normalizedReviewNote = null;
+        }
+
+        pr.setStatus(targetStatus);
+        pr.setUpdatedBy(reviewer);
+        paymentRequestRepository.save(pr);
+
+        paymentRequestReviewActivityRepository.save(PaymentRequestReviewActivity.builder()
+                .paymentRequest(pr)
+                .actor(reviewer)
+                .status(targetStatus)
+                .note(normalizedReviewNote)
+                .build());
+
+        List<PaymentRequestReviewActivity> activities =
+                paymentRequestReviewActivityRepository.findByPaymentRequest_IdOrderByCreatedAtAsc(uuid);
+
+        return toDetailResponseDTO(pr, activities);
+    }
+
     private void assertCanViewDetail(PaymentRequest paymentRequest, User viewer) {
         String role = viewer.getRole() == null ? "" : viewer.getRole().trim();
         boolean isAdmin = ROLE_ADMIN.equalsIgnoreCase(role);
