@@ -2,6 +2,13 @@ package io.propenuy.asis_app_be.model.enums;
 
 public enum ExpenseCategory {
     OPERASIONAL,
+<<<<<<< HEAD
+    GAJI_HONOR,
+    PROGRAM,
+    UTILITAS,
+    PEMELIHARAAN,
+    TRANSPORTASI
+=======
     UTILITAS,
     KONSUMSI,
     TRANSPORTASI,
@@ -10,4 +17,5 @@ public enum ExpenseCategory {
     GAJI,
     INFRASTRUKTUR,
     LAIN_LAIN
+>>>>>>> dev
 }

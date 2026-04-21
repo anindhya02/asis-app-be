@@ -11,27 +11,23 @@ public final class ExpenseSubcategories {
 
     static {
         BY_CATEGORY.put(ExpenseCategory.OPERASIONAL, Set.of(
-                "Listrik", "Air", "Internet", "Telepon", "Lain-lain"
+                "ALAT_TULIS_KANTOR", "PERLENGKAPAN", "KONSUMSI", "CETAK_FOTOKOPI"
         ));
-        BY_CATEGORY.put(ExpenseCategory.KONSUMSI, Set.of(
-                "Makanan", "Minuman", "Snack", "Lain-lain"
+        BY_CATEGORY.put(ExpenseCategory.GAJI_HONOR, Set.of(
+                "GAJI_TETAP", "HONOR_KEGIATAN", "INSENTIF", "THR"
+        ));
+        BY_CATEGORY.put(ExpenseCategory.PROGRAM, Set.of(
+                "PENDIDIKAN", "SOSIAL", "KESEHATAN", "DAKWAH", "PEMBANGUNAN"
+        ));
+        BY_CATEGORY.put(ExpenseCategory.UTILITAS, Set.of(
+                "LISTRIK", "AIR", "INTERNET", "TELEPON"
+        ));
+        BY_CATEGORY.put(ExpenseCategory.PEMELIHARAAN, Set.of(
+                "GEDUNG", "KENDARAAN", "PERALATAN", "TAMAN"
         ));
         BY_CATEGORY.put(ExpenseCategory.TRANSPORTASI, Set.of(
-                "BBM", "Tol", "Parkir", "Sewa Kendaraan", "Lain-lain"
+                "BBM", "SEWA_KENDARAAN", "TOL_PARKIR", "TIKET_PERJALANAN"
         ));
-        BY_CATEGORY.put(ExpenseCategory.PERLENGKAPAN, Set.of(
-                "ATK", "Peralatan", "Lain-lain"
-        ));
-        BY_CATEGORY.put(ExpenseCategory.PROGRAM_KEGIATAN, Set.of(
-                "Santunan", "Beasiswa", "Kegiatan Sosial", "Lain-lain"
-        ));
-        BY_CATEGORY.put(ExpenseCategory.GAJI, Set.of(
-                "Gaji Pokok", "Honor", "Tunjangan", "Lain-lain"
-        ));
-        BY_CATEGORY.put(ExpenseCategory.INFRASTRUKTUR, Set.of(
-                "Renovasi", "Pembangunan", "Perbaikan", "Lain-lain"
-        ));
-        BY_CATEGORY.put(ExpenseCategory.LAIN_LAIN, Set.of("Lain-lain"));
     }
 
     private ExpenseSubcategories() {

@@ -118,8 +118,7 @@ public class PaymentRequestRestServiceImpl implements PaymentRequestRestService 
                 expenseCategory = ExpenseCategory.valueOf(catUpper);
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException(
-                        "Kategori tidak valid. Nilai yang diterima: OPERASIONAL, KONSUMSI, TRANSPORTASI, PERLENGKAPAN, "
-                                + "PROGRAM_KEGIATAN, GAJI, INFRASTRUKTUR, LAIN_LAIN"
+                        "Kategori tidak valid. Nilai yang diterima: OPERASIONAL, GAJI_HONOR, PROGRAM, UTILITAS, PEMELIHARAAN, TRANSPORTASI"
                 );
             }
         } else {
@@ -246,12 +245,11 @@ public class PaymentRequestRestServiceImpl implements PaymentRequestRestService 
                 expenseCategory = ExpenseCategory.valueOf(catUpper);
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException(
-                        "Kategori tidak valid. Nilai yang diterima: OPERASIONAL, KONSUMSI, TRANSPORTASI, PERLENGKAPAN, "
-                                + "PROGRAM_KEGIATAN, GAJI, INFRASTRUKTUR, LAIN_LAIN"
+                        "Kategori tidak valid. Nilai yang diterima: OPERASIONAL, GAJI_HONOR, PROGRAM, UTILITAS, PEMELIHARAAN, TRANSPORTASI"
                 );
             }
         } else {
-            expenseCategory = ExpenseCategory.LAIN_LAIN;
+            expenseCategory = ExpenseCategory.OPERASIONAL;
         }
 
         validateSubCategoryIfPresent(expenseCategory, subCategory);
@@ -456,12 +454,11 @@ public class PaymentRequestRestServiceImpl implements PaymentRequestRestService 
                 expenseCategory = ExpenseCategory.valueOf(catUpper);
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException(
-                        "Kategori tidak valid. Nilai yang diterima: OPERASIONAL, KONSUMSI, TRANSPORTASI, PERLENGKAPAN, "
-                                + "PROGRAM_KEGIATAN, GAJI, INFRASTRUKTUR, LAIN_LAIN"
+                        "Kategori tidak valid. Nilai yang diterima: OPERASIONAL, GAJI_HONOR, PROGRAM, UTILITAS, PEMELIHARAAN, TRANSPORTASI"
                 );
             }
         } else {
-            expenseCategory = ExpenseCategory.LAIN_LAIN;
+            expenseCategory = ExpenseCategory.OPERASIONAL;
         }
 
         validateSubCategoryIfPresent(expenseCategory, subCategory);
