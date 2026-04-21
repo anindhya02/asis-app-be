@@ -221,14 +221,11 @@ public class FinancialReportServiceImpl implements FinancialReportService {
         options.add(FinancialReportResponseDTO.CategoryOptionDTO.builder().id("ZAKAT").label("Zakat").build());
         options.add(FinancialReportResponseDTO.CategoryOptionDTO.builder().id("INFAQ").label("Infaq").build());
         options.add(FinancialReportResponseDTO.CategoryOptionDTO.builder().id("OPERASIONAL").label("Operasional").build());
+        options.add(FinancialReportResponseDTO.CategoryOptionDTO.builder().id("GAJI_HONOR").label("Gaji & honor").build());
+        options.add(FinancialReportResponseDTO.CategoryOptionDTO.builder().id("PROGRAM").label("Program").build());
         options.add(FinancialReportResponseDTO.CategoryOptionDTO.builder().id("UTILITAS").label("Utilitas").build());
-        options.add(FinancialReportResponseDTO.CategoryOptionDTO.builder().id("KONSUMSI").label("Konsumsi").build());
+        options.add(FinancialReportResponseDTO.CategoryOptionDTO.builder().id("PEMELIHARAAN").label("Pemeliharaan").build());
         options.add(FinancialReportResponseDTO.CategoryOptionDTO.builder().id("TRANSPORTASI").label("Transportasi").build());
-        options.add(FinancialReportResponseDTO.CategoryOptionDTO.builder().id("PERLENGKAPAN").label("Perlengkapan").build());
-        options.add(FinancialReportResponseDTO.CategoryOptionDTO.builder().id("PROGRAM_KEGIATAN").label("Program kegiatan").build());
-        options.add(FinancialReportResponseDTO.CategoryOptionDTO.builder().id("GAJI").label("Gaji").build());
-        options.add(FinancialReportResponseDTO.CategoryOptionDTO.builder().id("INFRASTRUKTUR").label("Infrastruktur").build());
-        options.add(FinancialReportResponseDTO.CategoryOptionDTO.builder().id("LAIN_LAIN").label("Lain-lain").build());
 
         return options;
     }
@@ -245,14 +242,11 @@ public class FinancialReportServiceImpl implements FinancialReportService {
     private static String formatExpenseCategory(ExpenseCategory c) {
         return switch (c) {
             case OPERASIONAL -> "Operasional";
+            case GAJI_HONOR -> "Gaji & honor";
+            case PROGRAM -> "Program";
             case UTILITAS -> "Utilitas";
-            case KONSUMSI -> "Konsumsi";
+            case PEMELIHARAAN -> "Pemeliharaan";
             case TRANSPORTASI -> "Transportasi";
-            case PERLENGKAPAN -> "Perlengkapan";
-            case PROGRAM_KEGIATAN -> "Program kegiatan";
-            case GAJI -> "Gaji";
-            case INFRASTRUKTUR -> "Infrastruktur";
-            case LAIN_LAIN -> "Lain-lain (pengeluaran)";
         };
     }
 }
