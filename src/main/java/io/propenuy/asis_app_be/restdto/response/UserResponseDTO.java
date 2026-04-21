@@ -14,4 +14,7 @@ public class UserResponseDTO {
     private String role;
     private String status;
     private LocalDateTime createdDate;
+    private LocalDateTime updatedAt;
+    private LocalDateTime deletedAt;
+    private String deletedBy;
 }

@@ -5,6 +5,8 @@ import io.propenuy.asis_app_be.repository.*;
 import io.propenuy.asis_app_be.restdto.request.*;
 import io.propenuy.asis_app_be.restdto.response.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -87,14 +89,6 @@ public class UserRestServiceImpl implements UserRestService {
             throw new IllegalArgumentException("Username wajib diisi");
         }
 
-        if (request.getPassword() == null || request.getPassword().isBlank()) {
-            throw new IllegalArgumentException("Password wajib diisi");
-        }
-
-        if (request.getPassword().length() < 8) {
-            throw new IllegalArgumentException("Password minimal 8 karakter");
-        }
-
         if (request.getRole() == null || request.getRole().isBlank()) {
             throw new IllegalArgumentException("Role wajib diisi");
         }
@@ -114,8 +108,28 @@ public class UserRestServiceImpl implements UserRestService {
 
         user.setNama(request.getNama().trim());
         user.setUsername(usernameInput);
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(roleInput);
+
+        String newPassword = request.getNewPassword();
+        String confirmPassword = request.getConfirmPassword();
+        boolean hasNewPassword = newPassword != null && !newPassword.isBlank();
+        boolean hasConfirmPassword = confirmPassword != null && !confirmPassword.isBlank();
+
+        if (hasNewPassword || hasConfirmPassword) {
+            if (!hasNewPassword) {
+                throw new IllegalArgumentException("Password baru wajib diisi");
+            }
+            if (newPassword.length() < 8) {
+                throw new IllegalArgumentException("Password minimal 8 karakter");
+            }
+            if (!hasConfirmPassword) {
+                throw new IllegalArgumentException("Konfirmasi password wajib diisi");
+            }
+            if (!newPassword.equals(confirmPassword)) {
+                throw new IllegalArgumentException("Password tidak sama");
+            }
+            user.setPassword(passwordEncoder.encode(newPassword));
+        }
 
         userRepository.save(user);
         return mapToDTO(user);
@@ -127,6 +141,12 @@ public class UserRestServiceImpl implements UserRestService {
                 .orElseThrow(() -> new IllegalArgumentException("User tidak ditemukan"));
 
         user.setStatus("INACTIVE");
+        user.setDeletedAt(LocalDateTime.now());
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String deletedBy = authentication != null ? authentication.getName() : null;
+        user.setDeletedBy((deletedBy == null || deletedBy.isBlank()) ? "SYSTEM" : deletedBy);
+
         userRepository.save(user);
 
         return mapToDTO(user);
@@ -140,6 +160,9 @@ public class UserRestServiceImpl implements UserRestService {
                 .role(user.getRole())
                 .status(user.getStatus())
                 .createdDate(user.getCreatedDate())
+                .updatedAt(user.getUpdatedAt())
+                .deletedAt(user.getDeletedAt())
+                .deletedBy(user.getDeletedBy())
                 .build();
     }
 }

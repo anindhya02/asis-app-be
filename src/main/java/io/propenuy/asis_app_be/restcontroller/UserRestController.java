@@ -106,7 +106,7 @@ public class UserRestController {
         }
     }
 
-    @PatchMapping("/{userId}/deactivate")
+    @DeleteMapping("/{userId}")
     public ResponseEntity<BaseResponseDTO<UserResponseDTO>> deactivateUser(
             @PathVariable UUID userId) {
         try {
@@ -118,7 +118,10 @@ public class UserRestController {
                         .build()
             );
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(
+            HttpStatus status = e.getMessage() != null && e.getMessage().toLowerCase().contains("tidak ditemukan")
+                    ? HttpStatus.NOT_FOUND
+                    : HttpStatus.BAD_REQUEST;
+            return ResponseEntity.status(status).body(
                 BaseResponseDTO.<UserResponseDTO>builder()
                         .status("error")
                         .message(e.getMessage())
