@@ -4,6 +4,8 @@ import io.propenuy.asis_app_be.restdto.response.BaseResponseDTO;
 import io.propenuy.asis_app_be.security.jwt.JwtTokenFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -28,6 +30,7 @@ import org.springframework.http.HttpMethod;
 @RequiredArgsConstructor
 public class WebSecurityConfig {
 
+    private static final Logger logger = LoggerFactory.getLogger(WebSecurityConfig.class);
     private final JwtTokenFilter jwtTokenFilter;
 
     @Bean
@@ -44,6 +47,7 @@ public class WebSecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // ================= PUBLIC =================
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/error").permitAll()
 
                 // ================= ROLE BASED =================
                 .requestMatchers("/api/users/**").hasAuthority("ADMIN")
@@ -61,7 +65,7 @@ public class WebSecurityConfig {
                 .requestMatchers("/api/payment-requests-review/**").hasAnyAuthority("KETUA YAYASAN")
                 .requestMatchers("/api/donasi/**").hasAnyAuthority("ADMIN", "DONATUR")
                 .requestMatchers("/api/laporan/**").hasAnyAuthority("ADMIN", "KETUA YAYASAN")
-                .requestMatchers("/api/mis/**").hasAnyAuthority("PENGURUS", "KETUA YAYASAN")
+                .requestMatchers("/api/mis/**").permitAll()
 
                 // ================= DEFAULT =================
                 .anyRequest().authenticated()
@@ -69,6 +73,13 @@ public class WebSecurityConfig {
 
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((request, response, authException) -> {
+                    logger.warn(
+                            "AuthEntryPoint 401 path={} method={} authHeaderPresent={} message={}",
+                            request.getRequestURI(),
+                            request.getMethod(),
+                            request.getHeader("Authorization") != null,
+                            authException == null ? null : authException.getMessage()
+                    );
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     response.setContentType("application/json");
 

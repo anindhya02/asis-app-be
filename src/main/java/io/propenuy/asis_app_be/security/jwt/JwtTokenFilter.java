@@ -27,6 +27,16 @@ public class JwtTokenFilter extends OncePerRequestFilter{
     private static final Logger logger = LoggerFactory.getLogger(JwtTokenFilter.class);
  
     @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getServletPath();
+        boolean skip = path != null && path.startsWith("/api/mis/");
+        if (skip) {
+            logger.info("JwtTokenFilter skipped for path={}", path);
+        }
+        return skip;
+    }
+
+    @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException{
         try{
             String jwt = parseJwt(request);
@@ -40,7 +50,7 @@ public class JwtTokenFilter extends OncePerRequestFilter{
                 SecurityContextHolder.getContext().setAuthentication(authenticationToken);
             }
         }catch(Exception e){
-            logger.error("Cannot set user authentication: {}", e);
+            logger.error("Cannot set user authentication path={} message={}", request.getRequestURI(), e.getMessage(), e);
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return;
         }
