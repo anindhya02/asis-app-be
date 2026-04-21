@@ -9,6 +9,7 @@ import lombok.*;
 public class UpdateUserRequestDTO {
     private String nama;
     private String username;
-    private String password;
+    private String newPassword;
+    private String confirmPassword;
     private String role;
 }

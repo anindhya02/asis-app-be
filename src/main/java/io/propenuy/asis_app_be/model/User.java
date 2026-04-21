@@ -2,6 +2,7 @@ package io.propenuy.asis_app_be.model;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -33,4 +34,11 @@ public class User {
 
     @CreationTimestamp
     private LocalDateTime createdDate;
+
+    @UpdateTimestamp
+    private LocalDateTime updatedAt;
+
+    private LocalDateTime deletedAt;
+
+    private String deletedBy;
 }
