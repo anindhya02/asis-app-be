@@ -221,6 +221,7 @@ public class FinancialReportServiceImpl implements FinancialReportService {
         options.add(FinancialReportResponseDTO.CategoryOptionDTO.builder().id("ZAKAT").label("Zakat").build());
         options.add(FinancialReportResponseDTO.CategoryOptionDTO.builder().id("INFAQ").label("Infaq").build());
         options.add(FinancialReportResponseDTO.CategoryOptionDTO.builder().id("OPERASIONAL").label("Operasional").build());
+        options.add(FinancialReportResponseDTO.CategoryOptionDTO.builder().id("UTILITAS").label("Utilitas").build());
         options.add(FinancialReportResponseDTO.CategoryOptionDTO.builder().id("KONSUMSI").label("Konsumsi").build());
         options.add(FinancialReportResponseDTO.CategoryOptionDTO.builder().id("TRANSPORTASI").label("Transportasi").build());
         options.add(FinancialReportResponseDTO.CategoryOptionDTO.builder().id("PERLENGKAPAN").label("Perlengkapan").build());
@@ -244,6 +245,7 @@ public class FinancialReportServiceImpl implements FinancialReportService {
     private static String formatExpenseCategory(ExpenseCategory c) {
         return switch (c) {
             case OPERASIONAL -> "Operasional";
+            case UTILITAS -> "Utilitas";
             case KONSUMSI -> "Konsumsi";
             case TRANSPORTASI -> "Transportasi";
             case PERLENGKAPAN -> "Perlengkapan";

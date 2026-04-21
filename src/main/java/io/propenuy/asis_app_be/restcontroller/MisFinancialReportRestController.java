@@ -4,6 +4,8 @@ import io.propenuy.asis_app_be.restdto.response.BaseResponseDTO;
 import io.propenuy.asis_app_be.restdto.response.FinancialReportResponseDTO;
 import io.propenuy.asis_app_be.restservice.FinancialReportService;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class MisFinancialReportRestController {
 
+    private static final Logger logger = LoggerFactory.getLogger(MisFinancialReportRestController.class);
     private final FinancialReportService financialReportService;
 
     @GetMapping("/financial-report")
@@ -28,9 +31,17 @@ public class MisFinancialReportRestController {
             @RequestParam(value = "programId", required = false) String programId
     ) {
         try {
+            logger.info(
+                    "MIS financial-report requested period={} year={} month={} quarter={} categoryIds={} categoryId={} programId={}",
+                    period, year, month, quarter, categoryIds, categoryId, programId
+            );
             String categoryParam = (categoryIds != null && !categoryIds.isBlank()) ? categoryIds : categoryId;
             FinancialReportResponseDTO data = financialReportService.getFinancialReport(
                     period, year, month, quarter, categoryParam, programId);
+            logger.info(
+                    "MIS financial-report success period={} year={} totalIncome={} totalExpense={}",
+                    period, year, data.getTotalIncome(), data.getTotalExpense()
+            );
             return ResponseEntity.ok(
                     BaseResponseDTO.<FinancialReportResponseDTO>builder()
                             .status("success")
