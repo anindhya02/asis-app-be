@@ -41,6 +41,14 @@ public final class ExpenseSubcategories {
         return allowed.contains(subCategory.trim());
     }
 
+    public static boolean isAllowedExact(ExpenseCategory category, String subCategory) {
+        if (subCategory == null) {
+            return false;
+        }
+        Set<String> allowed = BY_CATEGORY.getOrDefault(category, Collections.emptySet());
+        return allowed.contains(subCategory);
+    }
+
     public static String allowedListHint(ExpenseCategory category) {
         Set<String> allowed = BY_CATEGORY.get(category);
         if (allowed == null || allowed.isEmpty()) {
