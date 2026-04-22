@@ -214,20 +214,34 @@ public class FinancialReportServiceImpl implements FinancialReportService {
                 .build();
     }
 
+    /**
+     * Selalu sama dengan {@link IncomeCategory} + {@link ExpenseCategory} (sumber kebenaran tunggal).
+     */
     private static List<FinancialReportResponseDTO.CategoryOptionDTO> buildAvailableCategories() {
         List<FinancialReportResponseDTO.CategoryOptionDTO> options = new ArrayList<>();
-
-        options.add(FinancialReportResponseDTO.CategoryOptionDTO.builder().id("DONASI").label("Donasi").build());
-        options.add(FinancialReportResponseDTO.CategoryOptionDTO.builder().id("ZAKAT").label("Zakat").build());
-        options.add(FinancialReportResponseDTO.CategoryOptionDTO.builder().id("INFAQ").label("Infaq").build());
-        options.add(FinancialReportResponseDTO.CategoryOptionDTO.builder().id("OPERASIONAL").label("Operasional").build());
-        options.add(FinancialReportResponseDTO.CategoryOptionDTO.builder().id("GAJI_HONOR").label("Gaji & honor").build());
-        options.add(FinancialReportResponseDTO.CategoryOptionDTO.builder().id("PROGRAM").label("Program").build());
-        options.add(FinancialReportResponseDTO.CategoryOptionDTO.builder().id("UTILITAS").label("Utilitas").build());
-        options.add(FinancialReportResponseDTO.CategoryOptionDTO.builder().id("PEMELIHARAAN").label("Pemeliharaan").build());
-        options.add(FinancialReportResponseDTO.CategoryOptionDTO.builder().id("TRANSPORTASI").label("Transportasi").build());
-
+        for (IncomeCategory c : IncomeCategory.values()) {
+            options.add(FinancialReportResponseDTO.CategoryOptionDTO.builder()
+                    .id(c.name())
+                    .label(incomeCategoryPickerLabel(c))
+                    .build());
+        }
+        for (ExpenseCategory c : ExpenseCategory.values()) {
+            options.add(FinancialReportResponseDTO.CategoryOptionDTO.builder()
+                    .id(c.name())
+                    .label(formatExpenseCategory(c))
+                    .build());
+        }
         return options;
+    }
+
+    /** Label filter: selaras dengan form laporan masuk (IncomeTransaction*). */
+    private static String incomeCategoryPickerLabel(IncomeCategory c) {
+        return switch (c) {
+            case DONASI -> "Donasi";
+            case ZAKAT -> "Zakat";
+            case INFAQ -> "Infaq";
+            case LAIN_LAIN -> "Lain-lain";
+        };
     }
 
     private static String formatIncomeCategory(IncomeCategory c) {
