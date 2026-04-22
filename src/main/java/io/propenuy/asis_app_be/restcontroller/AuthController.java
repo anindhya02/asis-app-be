@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 
@@ -53,6 +54,14 @@ public class AuthController {
                             .status("success")
                             .message("Login berhasil")
                             .data(response)
+                            .build()
+            );
+        } catch (DisabledException e) {
+            return ResponseEntity.badRequest().body(
+                    BaseResponseDTO.<LoginJwtResponseDTO>builder()
+                            .status("error")
+                            .message("Akun tidak aktif, silakan hubungi admin")
+                            .data(null)
                             .build()
             );
         } catch (Exception e) {
