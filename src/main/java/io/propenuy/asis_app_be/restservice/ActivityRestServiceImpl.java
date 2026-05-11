@@ -138,6 +138,12 @@ public class ActivityRestServiceImpl implements ActivityRestService {
     }
 
     private ActivityResponseDTO toResponseDTO(Activity activity) {
+        String imageUrl = null;
+        List<ActivityAttachment> attachments = attachmentRepository.findAllByActivityId(activity.getId());
+        if (!attachments.isEmpty()) {
+            imageUrl = attachments.get(0).getFileUrl();
+        }
+
         return ActivityResponseDTO.builder()
                 .id(activity.getId())
                 .title(activity.getTitle())
@@ -150,6 +156,7 @@ public class ActivityRestServiceImpl implements ActivityRestService {
                 .createdByUsername(activity.getCreatedBy().getUsername())
                 .createdAt(activity.getCreatedAt())
                 .updatedAt(activity.getUpdatedAt())
+                .imageUrl(imageUrl)
                 .build();
     }
 }
