@@ -48,6 +48,7 @@ public class WebSecurityConfig {
                 // ================= PUBLIC =================
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/error").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/activities").permitAll()
 
                 // ================= ROLE BASED =================
                 .requestMatchers("/api/users/**").hasAuthority("ADMIN")
