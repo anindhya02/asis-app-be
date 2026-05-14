@@ -19,6 +19,18 @@ public interface IncomeTransactionRepository extends JpaRepository<IncomeTransac
     BigDecimal sumAllConfirmedIncome();
 
     @Query("""
+            SELECT COALESCE(SUM(i.amount), 0)
+            FROM IncomeTransaction i
+            WHERE i.status = 'CONFIRMED'
+              AND i.deletedAt IS NULL
+              AND i.transactionDate >= :startDate
+              AND i.transactionDate <= :endDate
+            """)
+    BigDecimal sumConfirmedBetween(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
+
+    @Query("""
             SELECT i.category, COALESCE(SUM(i.amount), 0)
             FROM IncomeTransaction i
             WHERE i.status = 'CONFIRMED'
