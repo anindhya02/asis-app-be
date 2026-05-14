@@ -19,6 +19,18 @@ public interface ExpenseTransactionRepository extends JpaRepository<ExpenseTrans
     BigDecimal sumAllActiveExpenses();
 
     @Query("""
+            SELECT COALESCE(SUM(e.amount), 0)
+            FROM ExpenseTransaction e
+            WHERE e.status = 'ACTIVE'
+              AND e.deletedAt IS NULL
+              AND e.transactionDate >= :startDate
+              AND e.transactionDate <= :endDate
+            """)
+    BigDecimal sumActiveBetween(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
+
+    @Query("""
             SELECT e.category, COALESCE(SUM(e.amount), 0)
             FROM ExpenseTransaction e
             WHERE e.status = 'ACTIVE'
