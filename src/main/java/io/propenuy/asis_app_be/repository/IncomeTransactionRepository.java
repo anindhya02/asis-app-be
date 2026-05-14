@@ -56,4 +56,58 @@ public interface IncomeTransactionRepository extends JpaRepository<IncomeTransac
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
             @Param("category") IncomeCategory category);
+
+    /**
+     * Aggregasi donasi tunai (kategori DONASI) per bulan — native SQL untuk PostgreSQL
+     * (selaras dengan {@code spring.jpa.properties.hibernate.dialect=PostgreSQLDialect}).
+     */
+    @Query(value = """
+            SELECT CAST(EXTRACT(YEAR FROM i.transaction_date) AS INTEGER),
+                   CAST(EXTRACT(MONTH FROM i.transaction_date) AS INTEGER),
+                   COALESCE(SUM(i.amount), 0)
+            FROM income_transactions i
+            WHERE i.status = 'CONFIRMED'
+              AND i.deleted_at IS NULL
+              AND i.category = 'DONASI'
+              AND i.transaction_date >= :startDate
+              AND i.transaction_date <= :endDate
+            GROUP BY EXTRACT(YEAR FROM i.transaction_date), EXTRACT(MONTH FROM i.transaction_date)
+            ORDER BY EXTRACT(YEAR FROM i.transaction_date), EXTRACT(MONTH FROM i.transaction_date)
+            """, nativeQuery = true)
+    List<Object[]> sumDonationByYearMonthBetween(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
+
+    @Query(value = """
+            SELECT CAST(EXTRACT(YEAR FROM i.transaction_date) AS INTEGER),
+                   CAST(EXTRACT(QUARTER FROM i.transaction_date) AS INTEGER),
+                   COALESCE(SUM(i.amount), 0)
+            FROM income_transactions i
+            WHERE i.status = 'CONFIRMED'
+              AND i.deleted_at IS NULL
+              AND i.category = 'DONASI'
+              AND i.transaction_date >= :startDate
+              AND i.transaction_date <= :endDate
+            GROUP BY EXTRACT(YEAR FROM i.transaction_date), EXTRACT(QUARTER FROM i.transaction_date)
+            ORDER BY EXTRACT(YEAR FROM i.transaction_date), EXTRACT(QUARTER FROM i.transaction_date)
+            """, nativeQuery = true)
+    List<Object[]> sumDonationByYearQuarterBetween(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
+
+    @Query(value = """
+            SELECT CAST(EXTRACT(YEAR FROM i.transaction_date) AS INTEGER),
+                   COALESCE(SUM(i.amount), 0)
+            FROM income_transactions i
+            WHERE i.status = 'CONFIRMED'
+              AND i.deleted_at IS NULL
+              AND i.category = 'DONASI'
+              AND i.transaction_date >= :startDate
+              AND i.transaction_date <= :endDate
+            GROUP BY EXTRACT(YEAR FROM i.transaction_date)
+            ORDER BY EXTRACT(YEAR FROM i.transaction_date)
+            """, nativeQuery = true)
+    List<Object[]> sumDonationByYearBetween(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
 }
