@@ -63,6 +63,15 @@ public class PaymentRequestRestServiceImpl implements PaymentRequestRestService 
             "application/pdf"
     );
 
+    private void assertPengurusMayDraftPaymentRequest(User actor) {
+        String role = actor.getRole() == null ? "" : actor.getRole().trim();
+        if (!ROLE_PENGURUS.equalsIgnoreCase(role)) {
+            throw new PaymentRequestAccessForbiddenException(
+                    "Hanya pengurus yayasan yang dapat membuat atau mengubah pengajuan dana."
+            );
+        }
+    }
+
     @Override
     @Transactional(readOnly = true)
     public PaymentRequestListResponseDTO list(
@@ -323,6 +332,7 @@ public class PaymentRequestRestServiceImpl implements PaymentRequestRestService 
         // Get current user
         User createdByUser = userRepository.findByUsername(currentUsername)
                 .orElseThrow(() -> new IllegalArgumentException("User tidak ditemukan"));
+        assertPengurusMayDraftPaymentRequest(createdByUser);
 
         // Build entity
         PaymentRequest paymentRequest = PaymentRequest.builder()
@@ -399,6 +409,7 @@ public class PaymentRequestRestServiceImpl implements PaymentRequestRestService 
 
         User actor = userRepository.findByUsername(currentUsername)
                 .orElseThrow(() -> new IllegalArgumentException("User tidak ditemukan"));
+        assertPengurusMayDraftPaymentRequest(actor);
 
         if (pr.getCreatedBy() == null
                 || pr.getCreatedBy().getUsername() == null
