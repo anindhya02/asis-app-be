@@ -76,6 +76,14 @@ public class PaymentRequestRestController {
                             .data(response)
                             .build()
             );
+        } catch (PaymentRequestAccessForbiddenException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                    BaseResponseDTO.<PaymentRequestResponseDTO>builder()
+                            .status("error")
+                            .message(e.getMessage())
+                            .data(null)
+                            .build()
+            );
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(
                     BaseResponseDTO.<PaymentRequestResponseDTO>builder()
