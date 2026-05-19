@@ -1,5 +1,6 @@
 package io.propenuy.asis_app_be.restservice;
 
+import io.propenuy.asis_app_be.audit.IncomeTransactionAuditRecorder;
 import io.propenuy.asis_app_be.model.IncomeTransaction;
 import io.propenuy.asis_app_be.model.User;
 import io.propenuy.asis_app_be.model.enums.IncomeCategory;
@@ -31,6 +32,7 @@ public class IncomeTransactionRestServiceImpl implements IncomeTransactionRestSe
     private final IncomeTransactionRepository incomeTransactionRepository;
     private final UserRepository userRepository;
     private final CloudinaryStorageService cloudinaryStorageService;
+    private final IncomeTransactionAuditRecorder incomeTransactionAuditRecorder;
 
     private static final String CLOUDINARY_FOLDER = "income-proofs";
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
@@ -162,6 +164,7 @@ public class IncomeTransactionRestServiceImpl implements IncomeTransactionRestSe
                 .build();
 
         incomeTransactionRepository.save(transaction);
+        incomeTransactionAuditRecorder.recordAfterCreate(transaction);
 
         return toResponseDTO(transaction);
     }
@@ -174,6 +177,8 @@ public class IncomeTransactionRestServiceImpl implements IncomeTransactionRestSe
         if ("INACTIVE".equals(transaction.getStatus())) {
             throw new IllegalArgumentException("Transaksi sudah dinonaktifkan");
         }
+        IncomeTransactionAuditRecorder.BeforeState beforeDelete =
+                incomeTransactionAuditRecorder.capture(transaction);
         User deletedByUser = userRepository.findByUsername(currentUsername)
                 .orElseThrow(() -> new IllegalArgumentException("User tidak ditemukan"));
         if (!hasRole(deletedByUser, ROLE_KETUA_YAYASAN)) {
@@ -183,6 +188,7 @@ public class IncomeTransactionRestServiceImpl implements IncomeTransactionRestSe
         transaction.setDeletedAt(LocalDateTime.now());
         transaction.setDeletedBy(deletedByUser);
         incomeTransactionRepository.save(transaction);
+        incomeTransactionAuditRecorder.recordAfterSoftDelete(beforeDelete, id);
     }
 
     @Override
@@ -369,6 +375,10 @@ public class IncomeTransactionRestServiceImpl implements IncomeTransactionRestSe
             }
         }
 
+        IncomeTransactionAuditRecorder.BeforeState beforeUpdate =
+                incomeTransactionAuditRecorder.capture(transaction);
+        boolean proofWillChange = proofFile != null && !proofFile.isEmpty();
+
         if (transactionDateStr == null || transactionDateStr.isBlank()) {
             throw new IllegalArgumentException("Tanggal transaksi wajib diisi");
         }
@@ -460,6 +470,7 @@ public class IncomeTransactionRestServiceImpl implements IncomeTransactionRestSe
         }
 
         incomeTransactionRepository.save(transaction);
+        incomeTransactionAuditRecorder.recordAfterUpdate(beforeUpdate, transaction, proofWillChange);
 
         return toResponseDTO(transaction);
     }

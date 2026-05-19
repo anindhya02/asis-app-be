@@ -1,5 +1,6 @@
 package io.propenuy.asis_app_be.restservice;
 
+import io.propenuy.asis_app_be.audit.UserAuditRecorder;
 import io.propenuy.asis_app_be.model.*;
 import io.propenuy.asis_app_be.repository.*;
 import io.propenuy.asis_app_be.restdto.request.*;
@@ -21,6 +22,8 @@ public class UserRestServiceImpl implements UserRestService {
     private final UserRepository userRepository;
 
     private final BCryptPasswordEncoder passwordEncoder;
+
+    private final UserAuditRecorder userAuditRecorder;
 
     @Override
     public UserResponseDTO createUser(CreateUserRequestDTO request) {
@@ -57,6 +60,7 @@ public class UserRestServiceImpl implements UserRestService {
                 .build();
 
         userRepository.save(user);
+        userAuditRecorder.recordAfterCreate(user);
 
         return mapToDTO(user);
     }
@@ -106,6 +110,8 @@ public class UserRestServiceImpl implements UserRestService {
             throw new IllegalArgumentException("User sudah terdaftar");
         }
 
+        UserAuditRecorder.BeforeState beforeUpdate = userAuditRecorder.capture(user);
+
         user.setNama(request.getNama().trim());
         user.setUsername(usernameInput);
         user.setRole(roleInput);
@@ -132,6 +138,7 @@ public class UserRestServiceImpl implements UserRestService {
         }
 
         userRepository.save(user);
+        userAuditRecorder.recordAfterUpdate(beforeUpdate, user, hasNewPassword);
         return mapToDTO(user);
     }
 
@@ -139,6 +146,8 @@ public class UserRestServiceImpl implements UserRestService {
     public UserResponseDTO deactivateUser(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User tidak ditemukan"));
+
+        UserAuditRecorder.BeforeState beforeDeactivate = userAuditRecorder.capture(user);
 
         user.setStatus("INACTIVE");
         user.setDeletedAt(LocalDateTime.now());
@@ -148,6 +157,7 @@ public class UserRestServiceImpl implements UserRestService {
         user.setDeletedBy((deletedBy == null || deletedBy.isBlank()) ? "SYSTEM" : deletedBy);
 
         userRepository.save(user);
+        userAuditRecorder.recordAfterDeactivate(beforeDeactivate, user);
 
         return mapToDTO(user);
     }
