@@ -27,7 +27,7 @@ public class PaymentRequestAuditSnapshot {
     public record BreakdownLine(String description, BigDecimal amount) {
     }
 
-    public String toJson(PaymentRequestAuditRecorder.BeforeState state, Boolean supportingDocumentChanged, String reviewNote) {
+    public String toJson(PaymentRequestAuditRecorder.BeforeState state) {
         if (state == null) {
             return null;
         }
@@ -40,11 +40,15 @@ public class PaymentRequestAuditSnapshot {
                 state.paymentMethod(),
                 state.notes(),
                 state.breakdowns(),
-                supportingDocumentChanged,
-                reviewNote);
+                state.supportingDocumentUrl(),
+                null);
     }
 
-    public String toJson(PaymentRequest request, Boolean supportingDocumentChanged, String reviewNote) {
+    public String toJson(PaymentRequest request) {
+        return toJson(request, null);
+    }
+
+    public String toJson(PaymentRequest request, String reviewNote) {
         if (request == null) {
             return null;
         }
@@ -57,7 +61,7 @@ public class PaymentRequestAuditSnapshot {
                 request.getPaymentMethod(),
                 request.getNotes(),
                 breakdownLinesFromEntity(request.getBreakdowns()),
-                supportingDocumentChanged,
+                request.getSupportingDocumentUrl(),
                 reviewNote);
     }
 
@@ -84,7 +88,7 @@ public class PaymentRequestAuditSnapshot {
             PaymentMethod paymentMethod,
             String notes,
             List<BreakdownLine> breakdowns,
-            Boolean supportingDocumentChanged,
+            String supportingDocumentUrl,
             String reviewNote) {
         try {
             ObjectNode node = objectMapper.createObjectNode();
@@ -119,8 +123,8 @@ public class PaymentRequestAuditSnapshot {
                     }
                 }
             }
-            if (supportingDocumentChanged != null) {
-                node.put("supportingDocumentChanged", supportingDocumentChanged);
+            if (supportingDocumentUrl != null && !supportingDocumentUrl.isBlank()) {
+                node.put("supportingDocumentUrl", supportingDocumentUrl.trim());
             }
             if (reviewNote != null && !reviewNote.isBlank()) {
                 node.put("reviewNote", reviewNote.trim());

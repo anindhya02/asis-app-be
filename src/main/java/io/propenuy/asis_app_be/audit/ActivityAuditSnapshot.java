@@ -1,12 +1,14 @@
 package io.propenuy.asis_app_be.audit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 @Component
 public class ActivityAuditSnapshot {
@@ -19,17 +21,28 @@ public class ActivityAuditSnapshot {
         this.objectMapper = objectMapper;
     }
 
-    public String toJson(
+    public String toJson(ActivityAuditRecorder.BeforeState state) {
+        if (state == null) {
+            return null;
+        }
+        return toCompactJson(
+                state.title(),
+                state.category(),
+                state.program(),
+                state.startDate(),
+                state.endDate(),
+                state.description(),
+                state.activityPhotoUrls());
+    }
+
+    private String toCompactJson(
             String title,
             String category,
             String program,
             LocalDate startDate,
             LocalDate endDate,
             String description,
-            String activityPhotoUrl,
-            Boolean photoChanged,
-            String activityPhotoUrlOld,
-            String activityPhotoUrlNew) {
+            List<String> activityPhotoUrls) {
         try {
             ObjectNode node = objectMapper.createObjectNode();
             if (title != null && !title.isBlank()) {
@@ -48,40 +61,19 @@ public class ActivityAuditSnapshot {
             if (description != null && !description.isBlank()) {
                 node.put("description", description.trim());
             }
-            if (activityPhotoUrl != null && !activityPhotoUrl.isBlank()) {
-                node.put("activityPhotoUrl", activityPhotoUrl);
-            }
-            if (photoChanged != null) {
-                node.put("photoChanged", photoChanged);
-            }
-            if (activityPhotoUrlOld != null && !activityPhotoUrlOld.isBlank()) {
-                node.put("activityPhotoUrlOld", activityPhotoUrlOld);
-            }
-            if (activityPhotoUrlNew != null && !activityPhotoUrlNew.isBlank()) {
-                node.put("activityPhotoUrlNew", activityPhotoUrlNew);
+            if (activityPhotoUrls != null && !activityPhotoUrls.isEmpty()) {
+                ArrayNode arr = node.putArray("activityPhotoUrls");
+                for (String url : activityPhotoUrls) {
+                    if (url != null && !url.isBlank()) {
+                        arr.add(url.trim());
+                    }
+                }
+                node.put("activityPhotoUrl", activityPhotoUrls.get(0).trim());
             }
             return objectMapper.writeValueAsString(node);
         } catch (Exception e) {
             return null;
         }
-    }
-
-    public String toJson(ActivityAuditRecorder.BeforeState state, Boolean photoChanged, String photoUrlOld, String photoUrlNew) {
-        if (state == null) {
-            return null;
-        }
-        String primaryUrl = photoUrlNew != null ? photoUrlNew : state.activityPhotoUrl();
-        return toJson(
-                state.title(),
-                state.category(),
-                state.program(),
-                state.startDate(),
-                state.endDate(),
-                state.description(),
-                primaryUrl,
-                photoChanged,
-                photoUrlOld,
-                photoUrlNew);
     }
 
     public static String formatPeriod(LocalDate startDate, LocalDate endDate) {

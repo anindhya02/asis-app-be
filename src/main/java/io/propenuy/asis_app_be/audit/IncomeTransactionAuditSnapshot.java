@@ -21,7 +21,7 @@ public class IncomeTransactionAuditSnapshot {
         this.objectMapper = objectMapper;
     }
 
-    public String toJson(IncomeTransactionAuditRecorder.BeforeState state, Boolean proofChanged) {
+    public String toJson(IncomeTransactionAuditRecorder.BeforeState state) {
         if (state == null) {
             return null;
         }
@@ -33,10 +33,10 @@ public class IncomeTransactionAuditSnapshot {
                 state.donorName(),
                 state.amount(),
                 state.note(),
-                proofChanged);
+                state.proofFilePath());
     }
 
-    public String toJson(IncomeTransaction transaction, Boolean proofChanged) {
+    public String toJson(IncomeTransaction transaction) {
         if (transaction == null) {
             return null;
         }
@@ -48,7 +48,7 @@ public class IncomeTransactionAuditSnapshot {
                 transaction.getDonorName(),
                 transaction.getAmount(),
                 transaction.getNote(),
-                proofChanged);
+                transaction.getProofFilePath());
     }
 
     private String toCompactJson(
@@ -59,7 +59,7 @@ public class IncomeTransactionAuditSnapshot {
             String donorName,
             BigDecimal amount,
             String note,
-            Boolean proofChanged) {
+            String proofFilePath) {
         try {
             ObjectNode node = objectMapper.createObjectNode();
             if (transactionDate != null) {
@@ -83,8 +83,8 @@ public class IncomeTransactionAuditSnapshot {
             if (note != null && !note.isBlank()) {
                 node.put("note", note);
             }
-            if (proofChanged != null) {
-                node.put("proofChanged", proofChanged);
+            if (proofFilePath != null && !proofFilePath.isBlank()) {
+                node.put("proofFilePath", proofFilePath.trim());
             }
             return objectMapper.writeValueAsString(node);
         } catch (Exception e) {

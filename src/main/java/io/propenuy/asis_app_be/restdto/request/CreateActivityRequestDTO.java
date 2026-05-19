@@ -21,4 +21,9 @@ public class CreateActivityRequestDTO {
     private LocalDate endDate;
 
     private String description;
+
+    /**
+     * Jika true, audit CREATE ditunda sampai lampiran foto diunggah (agar URL foto ikut tercatat).
+     */
+    private Boolean deferAudit;
 }

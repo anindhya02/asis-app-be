@@ -49,15 +49,15 @@ public class PaymentRequestAuditRecorder {
     }
 
     public void recordAfterCreate(PaymentRequest request) {
-        persist(request.getId(), AuditActionType.CREATE, null, snapshot.toJson(request, null, null));
+        persist(request.getId(), AuditActionType.CREATE, null, snapshot.toJson(request));
     }
 
     public void recordAfterUpdate(BeforeState before, PaymentRequest after, boolean supportingDocumentChanged) {
         persist(
                 after.getId(),
                 AuditActionType.UPDATE,
-                snapshot.toJson(before, null, null),
-                snapshot.toJson(after, supportingDocumentChanged, null));
+                snapshot.toJson(before),
+                snapshot.toJson(after));
     }
 
     public void recordAfterSubmit(PaymentRequest request) {
@@ -65,14 +65,14 @@ public class PaymentRequestAuditRecorder {
                 request.getId(),
                 AuditActionType.SUBMIT,
                 null,
-                snapshot.toJson(request, null, null));
+                snapshot.toJson(request));
     }
 
     public void recordAfterCancel(BeforeState before, UUID paymentRequestId) {
         persist(
                 paymentRequestId,
                 AuditActionType.CANCEL,
-                snapshot.toJson(before, null, null),
+                snapshot.toJson(before),
                 null);
     }
 
@@ -80,24 +80,24 @@ public class PaymentRequestAuditRecorder {
         persist(
                 after.getId(),
                 AuditActionType.APPROVE,
-                snapshot.toJson(before, null, null),
-                snapshot.toJson(after, null, reviewNote));
+                snapshot.toJson(before),
+                snapshot.toJson(after, reviewNote));
     }
 
     public void recordAfterReject(BeforeState before, PaymentRequest after, String reviewNote) {
         persist(
                 after.getId(),
                 AuditActionType.REJECT,
-                snapshot.toJson(before, null, null),
-                snapshot.toJson(after, null, reviewNote));
+                snapshot.toJson(before),
+                snapshot.toJson(after, reviewNote));
     }
 
     public void recordAfterRevision(BeforeState before, PaymentRequest after, String reviewNote) {
         persist(
                 after.getId(),
                 AuditActionType.REVIEW,
-                snapshot.toJson(before, null, null),
-                snapshot.toJson(after, null, reviewNote));
+                snapshot.toJson(before),
+                snapshot.toJson(after, reviewNote));
     }
 
     private void persist(UUID id, AuditActionType actionType, String oldJson, String newJson) {

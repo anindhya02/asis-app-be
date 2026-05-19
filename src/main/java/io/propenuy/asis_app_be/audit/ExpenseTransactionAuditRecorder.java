@@ -57,7 +57,7 @@ public class ExpenseTransactionAuditRecorder {
                 transaction.getId(),
                 AuditActionType.CREATE,
                 null,
-                snapshot.toJson(transaction, null));
+                snapshot.toJson(transaction));
     }
 
     public void recordAfterUpdate(BeforeState before, ExpenseTransaction after, boolean proofChanged) {
@@ -66,8 +66,8 @@ public class ExpenseTransactionAuditRecorder {
                 ExpenseTransaction.class,
                 after.getId(),
                 AuditActionType.UPDATE,
-                snapshot.toJson(before, null),
-                snapshot.toJson(after, proofChanged));
+                snapshot.toJson(before),
+                snapshot.toJson(after));
     }
 
     public void recordAfterSoftDelete(BeforeState before, UUID transactionId) {
@@ -76,7 +76,7 @@ public class ExpenseTransactionAuditRecorder {
                 ExpenseTransaction.class,
                 transactionId,
                 AuditActionType.DELETE,
-                snapshot.toJson(before, null),
+                snapshot.toJson(before),
                 null);
     }
 }

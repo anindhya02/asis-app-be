@@ -67,7 +67,9 @@ public class ActivityRestServiceImpl implements ActivityRestService {
                 .build();
 
         activityRepository.save(activity);
-        activityAuditRecorder.recordAfterCreate(activity);
+        if (!Boolean.TRUE.equals(request.getDeferAudit())) {
+            activityAuditRecorder.recordAfterCreate(activity);
+        }
 
         return toResponseDTO(activity);
     }
@@ -125,7 +127,11 @@ public class ActivityRestServiceImpl implements ActivityRestService {
         activity.setDescription(request.getDescription().trim());
 
         activityRepository.save(activity);
-        activityAuditRecorder.recordAfterUpdate(beforeUpdate, activity);
+        if (Boolean.TRUE.equals(request.getDeferAudit())) {
+            activityAuditRecorder.stashPendingUpdateBefore(id, beforeUpdate);
+        } else {
+            activityAuditRecorder.recordAfterUpdate(beforeUpdate, activity);
+        }
 
         return toResponseDTO(activity);
     }
