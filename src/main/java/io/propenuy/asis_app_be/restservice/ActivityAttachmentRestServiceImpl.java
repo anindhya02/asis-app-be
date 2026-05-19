@@ -88,7 +88,7 @@ public class ActivityAttachmentRestServiceImpl implements ActivityAttachmentRest
         }
 
         Activity refreshed = activityRepository.findById(activityId).orElse(activity);
-        activityAuditRecorder.recordAfterPhotoChange(beforeUpload, refreshed);
+        activityAuditRecorder.recordAfterAttachmentsUploaded(beforeUpload, refreshed);
 
         return results;
     }

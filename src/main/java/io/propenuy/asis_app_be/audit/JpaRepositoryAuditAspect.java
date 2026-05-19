@@ -5,6 +5,9 @@ import io.propenuy.asis_app_be.model.Activity;
 import io.propenuy.asis_app_be.model.ActivityAttachment;
 import io.propenuy.asis_app_be.model.ExpenseTransaction;
 import io.propenuy.asis_app_be.model.IncomeTransaction;
+import io.propenuy.asis_app_be.model.InventoryItem;
+import io.propenuy.asis_app_be.model.InventoryItemBreakdown;
+import io.propenuy.asis_app_be.model.InventoryUsageLog;
 import io.propenuy.asis_app_be.model.PaymentRequest;
 import io.propenuy.asis_app_be.model.PaymentRequestBreakdown;
 import io.propenuy.asis_app_be.model.PaymentRequestReviewActivity;
@@ -83,7 +86,10 @@ public class JpaRepositoryAuditAspect {
                 || persisted instanceof PaymentRequestBreakdown
                 || persisted instanceof PaymentRequestReviewActivity
                 || persisted instanceof Activity
-                || persisted instanceof ActivityAttachment) {
+                || persisted instanceof ActivityAttachment
+                || persisted instanceof InventoryItem
+                || persisted instanceof InventoryItemBreakdown
+                || persisted instanceof InventoryUsageLog) {
             return result;
         }
         String newJson = auditEntitySerializer.toJson(persisted);
@@ -137,6 +143,9 @@ public class JpaRepositoryAuditAspect {
         }
         Object entity = pjp.getArgs()[0];
         if (entity == null || isAuditLogEntity(entity)) {
+            return pjp.proceed();
+        }
+        if (entity instanceof ActivityAttachment) {
             return pjp.proceed();
         }
         Class<?> entityClass = Hibernate.getClass(entity);

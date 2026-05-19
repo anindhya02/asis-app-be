@@ -19,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.propenuy.asis_app_be.audit.InventoryItemAuditRecorder;
 import io.propenuy.asis_app_be.model.InventoryItem;
 import io.propenuy.asis_app_be.model.InventoryItemBreakdown;
 import io.propenuy.asis_app_be.model.InventoryUsageLog;
@@ -50,6 +51,7 @@ public class InventoryRestServiceImpl implements InventoryRestService {
     private final UserRepository userRepository;
     private final CloudinaryStorageService cloudinaryStorageService;
     private final ObjectMapper objectMapper;
+    private final InventoryItemAuditRecorder inventoryItemAuditRecorder;
 
     @Override
     @Transactional(readOnly = true)
@@ -201,6 +203,7 @@ public class InventoryRestServiceImpl implements InventoryRestService {
         item.getBreakdowns().addAll(breakdowns);
 
         inventoryItemRepository.save(item);
+        inventoryItemAuditRecorder.recordAfterCreate(item);
         return toResponseDTO(item);
     }
 
