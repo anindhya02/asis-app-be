@@ -1,13 +1,12 @@
 package io.propenuy.asis_app_be.security;
 
-import io.propenuy.asis_app_be.restdto.response.BaseResponseDTO;
-import io.propenuy.asis_app_be.security.jwt.JwtTokenFilter;
-import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
+import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -20,10 +19,12 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.List;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.http.HttpMethod;
+
+import io.propenuy.asis_app_be.restdto.response.BaseResponseDTO;
+import io.propenuy.asis_app_be.security.jwt.JwtTokenFilter;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 
 @Configuration
 @EnableWebSecurity
@@ -46,8 +47,10 @@ public class WebSecurityConfig {
 
             .authorizeHttpRequests(auth -> auth
                 // ================= PUBLIC =================
+                .requestMatchers(HttpMethod.GET, "/").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/error").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/activities").permitAll()
 
                 // ================= ROLE BASED =================
                 .requestMatchers("/api/users/**").hasAuthority("ADMIN")
@@ -64,12 +67,15 @@ public class WebSecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/expense-transactions/**").hasAnyAuthority("ADMIN", "PENGURUS", "KETUA YAYASAN")
                 .requestMatchers(HttpMethod.PUT, "/api/expense-transactions/**").hasAnyAuthority("ADMIN", "PENGURUS", "KETUA YAYASAN")
                 .requestMatchers(HttpMethod.DELETE, "/api/expense-transactions/**").hasAnyAuthority("ADMIN", "PENGURUS", "KETUA YAYASAN")
+                .requestMatchers("/api/activities/**").hasAnyAuthority("ADMIN", "PENGURUS")
                 .requestMatchers("/api/payment-requests/**").hasAnyAuthority("PENGURUS", "KETUA YAYASAN")
                 .requestMatchers("/api/payment-requests-review/**").hasAnyAuthority("KETUA YAYASAN")
-                .requestMatchers("/api/inventory/**").hasAnyAuthority("PENGURUS", "KETUA YAYASAN")
                 .requestMatchers("/api/donasi/**").hasAnyAuthority("ADMIN", "DONATUR")
                 .requestMatchers("/api/laporan/**").hasAnyAuthority("ADMIN", "KETUA YAYASAN")
                 .requestMatchers("/api/mis/**").hasAnyAuthority("PENGURUS", "KETUA YAYASAN")
+                .requestMatchers(HttpMethod.GET,"/api/auditLog").hasAnyAuthority("KETUA YAYASAN", "ADMIN")
+
+                .requestMatchers("/api/eis/**").hasAuthority("KETUA YAYASAN")
 
                 // ================= DEFAULT =================
                 .anyRequest().authenticated()

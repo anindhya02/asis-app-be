@@ -1,5 +1,6 @@
 package io.propenuy.asis_app_be.restservice;
 
+import io.propenuy.asis_app_be.audit.ActivityAuditRecorder;
 import io.propenuy.asis_app_be.model.Activity;
 import io.propenuy.asis_app_be.model.ActivityAttachment;
 import io.propenuy.asis_app_be.repository.ActivityAttachmentRepository;
@@ -24,6 +25,7 @@ public class ActivityAttachmentRestServiceImpl implements ActivityAttachmentRest
     private final ActivityRepository activityRepository;
     private final ActivityAttachmentRepository attachmentRepository;
     private final CloudinaryStorageService cloudinaryStorageService;
+    private final ActivityAuditRecorder activityAuditRecorder;
 
     private static final Set<String> ALLOWED_TYPES = Set.of("image/jpeg", "image/png");
     private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -38,6 +40,8 @@ public class ActivityAttachmentRestServiceImpl implements ActivityAttachmentRest
         if (files == null || files.length == 0) {
             throw new IllegalArgumentException("Minimal satu file harus diupload");
         }
+
+        ActivityAuditRecorder.BeforeState beforeUpload = activityAuditRecorder.capture(activity);
 
         List<AttachmentResponseDTO> results = new ArrayList<>();
 
@@ -82,6 +86,9 @@ public class ActivityAttachmentRestServiceImpl implements ActivityAttachmentRest
                 throw new RuntimeException("Gagal mengupload file: " + originalFilename + " - " + e.getMessage(), e);
             }
         }
+
+        Activity refreshed = activityRepository.findById(activityId).orElse(activity);
+        activityAuditRecorder.recordAfterAttachmentsUploaded(beforeUpload, refreshed);
 
         return results;
     }

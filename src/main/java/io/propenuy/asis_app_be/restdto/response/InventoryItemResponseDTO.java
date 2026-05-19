@@ -23,6 +23,7 @@ public class InventoryItemResponseDTO {
     private BigDecimal quantity;
     private String unit;
     private List<BreakdownResponseDTO> breakdownsList;
+    private List<InventoryUsageLogResponseDTO> usageLogs;
     private String note;
     private String createdBy;
     private String createdByUsername;
@@ -34,6 +35,30 @@ public class InventoryItemResponseDTO {
     @AllArgsConstructor
     public static class BreakdownResponseDTO {
         private UUID id;
+        private String name;
+        private BigDecimal amount;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class InventoryUsageLogResponseDTO {
+        private UUID id;
+        private BigDecimal quantityUsed;
+        private String usagePurpose;
+        private String auditMessage;
+        private List<UsageLogBreakdownResponseDTO> breakdownUsages;
+        private String createdByUsername;
+        private LocalDateTime createdAt;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class UsageLogBreakdownResponseDTO {
+        private UUID breakdownId;
         private String name;
         private BigDecimal amount;
     }

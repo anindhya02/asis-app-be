@@ -21,4 +21,7 @@ public class UpdateActivityRequestDTO {
     private LocalDate endDate;
 
     private String description;
+
+    /** Tunda audit UPDATE sampai lampiran diunggah (satu log untuk field + foto). */
+    private Boolean deferAudit;
 }

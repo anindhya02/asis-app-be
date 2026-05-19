@@ -3,8 +3,10 @@ package io.propenuy.asis_app_be.restservice;
 import org.springframework.web.multipart.MultipartFile;
 
 import io.propenuy.asis_app_be.restdto.request.CreateInventoryItemRequestDTO;
+import io.propenuy.asis_app_be.restdto.request.RecordInventoryUsageRequestDTO;
 import io.propenuy.asis_app_be.restdto.response.InventoryItemListResponseDTO;
 import io.propenuy.asis_app_be.restdto.response.InventoryItemResponseDTO;
+import io.propenuy.asis_app_be.restdto.response.RecordInventoryUsageResponseDTO;
 
 public interface InventoryRestService {
     InventoryItemListResponseDTO list(String search, int page, int limit);
@@ -14,6 +16,12 @@ public interface InventoryRestService {
     InventoryItemResponseDTO create(
             CreateInventoryItemRequestDTO request,
             MultipartFile photoFile,
+            String currentUsername
+    );
+
+    RecordInventoryUsageResponseDTO recordUsage(
+            String id,
+            RecordInventoryUsageRequestDTO request,
             String currentUsername
     );
 }

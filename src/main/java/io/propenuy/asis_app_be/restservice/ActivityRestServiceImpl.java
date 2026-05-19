@@ -1,5 +1,6 @@
 package io.propenuy.asis_app_be.restservice;
 
+import io.propenuy.asis_app_be.audit.ActivityAuditRecorder;
 import io.propenuy.asis_app_be.model.Activity;
 import io.propenuy.asis_app_be.model.ActivityAttachment;
 import io.propenuy.asis_app_be.model.User;
@@ -27,6 +28,7 @@ public class ActivityRestServiceImpl implements ActivityRestService {
     private final ActivityAttachmentRepository attachmentRepository;
     private final UserRepository userRepository;
     private final CloudinaryStorageService cloudinaryStorageService;
+    private final ActivityAuditRecorder activityAuditRecorder;
 
     @Override
     @Transactional
@@ -65,6 +67,9 @@ public class ActivityRestServiceImpl implements ActivityRestService {
                 .build();
 
         activityRepository.save(activity);
+        if (!Boolean.TRUE.equals(request.getDeferAudit())) {
+            activityAuditRecorder.recordAfterCreate(activity);
+        }
 
         return toResponseDTO(activity);
     }
@@ -112,6 +117,8 @@ public class ActivityRestServiceImpl implements ActivityRestService {
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
                         "Postingan kegiatan dengan id " + id + " tidak ditemukan"));
 
+        ActivityAuditRecorder.BeforeState beforeUpdate = activityAuditRecorder.capture(activity);
+
         activity.setTitle(request.getTitle().trim());
         activity.setCategory(request.getCategory().trim());
         activity.setProgram(request.getProgram().trim());
@@ -120,6 +127,11 @@ public class ActivityRestServiceImpl implements ActivityRestService {
         activity.setDescription(request.getDescription().trim());
 
         activityRepository.save(activity);
+        if (Boolean.TRUE.equals(request.getDeferAudit())) {
+            activityAuditRecorder.stashPendingUpdateBefore(id, beforeUpdate);
+        } else {
+            activityAuditRecorder.recordAfterUpdate(beforeUpdate, activity);
+        }
 
         return toResponseDTO(activity);
     }
@@ -131,13 +143,21 @@ public class ActivityRestServiceImpl implements ActivityRestService {
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
                         "Postingan kegiatan dengan id " + id + " tidak ditemukan"));
 
-        // Soft delete
+        ActivityAuditRecorder.BeforeState beforeDelete = activityAuditRecorder.capture(activity);
+
         activity.setDeleted(true);
         activity.setDeletedAt(LocalDateTime.now());
         activityRepository.save(activity);
+        activityAuditRecorder.recordAfterSoftDelete(beforeDelete, id);
     }
 
     private ActivityResponseDTO toResponseDTO(Activity activity) {
+        String imageUrl = null;
+        List<ActivityAttachment> attachments = attachmentRepository.findAllByActivityId(activity.getId());
+        if (!attachments.isEmpty()) {
+            imageUrl = attachments.get(0).getFileUrl();
+        }
+
         return ActivityResponseDTO.builder()
                 .id(activity.getId())
                 .title(activity.getTitle())
@@ -150,6 +170,7 @@ public class ActivityRestServiceImpl implements ActivityRestService {
                 .createdByUsername(activity.getCreatedBy().getUsername())
                 .createdAt(activity.getCreatedAt())
                 .updatedAt(activity.getUpdatedAt())
+                .imageUrl(imageUrl)
                 .build();
     }
 }

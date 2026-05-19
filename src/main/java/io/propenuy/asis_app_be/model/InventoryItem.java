@@ -23,6 +23,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -63,6 +64,11 @@ public class InventoryItem {
     @OneToMany(mappedBy = "inventoryItem", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<InventoryItemBreakdown> breakdowns = new ArrayList<>();
+
+    @OneToMany(mappedBy = "inventoryItem")
+    @OrderBy("createdAt DESC")
+    @Builder.Default
+    private List<InventoryUsageLog> usageLogs = new ArrayList<>();
 
     @Column(columnDefinition = "TEXT")
     private String note;

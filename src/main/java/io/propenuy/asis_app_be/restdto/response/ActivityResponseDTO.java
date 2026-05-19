@@ -22,4 +22,5 @@ public class ActivityResponseDTO {
     private String createdByUsername;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private String imageUrl;
 }

@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import io.propenuy.asis_app_be.audit.ExpenseTransactionAuditRecorder;
 import io.propenuy.asis_app_be.model.ExpenseTransaction;
 import io.propenuy.asis_app_be.model.User;
 import io.propenuy.asis_app_be.model.enums.ExpenseCategory;
@@ -41,6 +42,7 @@ public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRest
     private final IncomeTransactionRepository incomeTransactionRepository;
     private final UserRepository userRepository;
     private final CloudinaryStorageService cloudinaryStorageService;
+    private final ExpenseTransactionAuditRecorder expenseTransactionAuditRecorder;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
     private static final List<String> ALLOWED_IMAGE_TYPES = List.of(
@@ -157,6 +159,7 @@ public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRest
                 .build();
 
         expenseTransactionRepository.save(transaction);
+        expenseTransactionAuditRecorder.recordAfterCreate(transaction);
 
         return toResponseDTO(transaction);
     }
@@ -316,6 +319,9 @@ public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRest
             throw new IllegalStateException("Transaksi pengeluaran sudah nonaktif dan tidak dapat diubah");
         }
 
+        ExpenseTransactionAuditRecorder.BeforeState beforeUpdate =
+                expenseTransactionAuditRecorder.capture(transaction);
+
         if (transaction.getAmount() == null || transaction.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Nominal transaksi tidak valid (harus lebih dari 0)");
         }
@@ -370,6 +376,7 @@ public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRest
         transaction.setUpdatedBy(updatedByUser);
 
         expenseTransactionRepository.save(transaction);
+        expenseTransactionAuditRecorder.recordAfterUpdate(beforeUpdate, transaction, false);
         return toResponseDTO(transaction);
     }
 
@@ -390,6 +397,9 @@ public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRest
             throw new IllegalStateException("Transaksi pengeluaran sudah nonaktif");
         }
 
+        ExpenseTransactionAuditRecorder.BeforeState beforeDelete =
+                expenseTransactionAuditRecorder.capture(transaction);
+
         User deletedByUser = userRepository.findByUsername(currentUsername)
                 .orElseThrow(() -> new IllegalArgumentException("User tidak ditemukan"));
 
@@ -402,6 +412,7 @@ public class ExpenseTransactionRestServiceImpl implements ExpenseTransactionRest
         transaction.setDeletedBy(deletedByUser);
         transaction.setUpdatedBy(deletedByUser);
         expenseTransactionRepository.save(transaction);
+        expenseTransactionAuditRecorder.recordAfterSoftDelete(beforeDelete, uuid);
     }
 
     // Upload bukti file ke Cloudinary
