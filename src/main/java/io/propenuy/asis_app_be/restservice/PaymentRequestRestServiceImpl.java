@@ -24,6 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.propenuy.asis_app_be.audit.PaymentRequestAuditRecorder;
 import io.propenuy.asis_app_be.model.PaymentRequest;
 import io.propenuy.asis_app_be.model.PaymentRequestBreakdown;
 import io.propenuy.asis_app_be.model.PaymentRequestReviewActivity;
@@ -53,6 +54,7 @@ public class PaymentRequestRestServiceImpl implements PaymentRequestRestService 
     private final UserRepository userRepository;
     private final CloudinaryStorageService cloudinaryStorageService;
     private final ObjectMapper objectMapper;
+    private final PaymentRequestAuditRecorder paymentRequestAuditRecorder;
 
     private static final String CLOUDINARY_FOLDER = "payment-request-docs";
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
@@ -376,7 +378,14 @@ public class PaymentRequestRestServiceImpl implements PaymentRequestRestService 
                     .build());
         }
 
-        return toResponseDTO(paymentRequest);
+        PaymentRequest saved = paymentRequestRepository.findDetailById(paymentRequest.getId())
+                .orElse(paymentRequest);
+        paymentRequestAuditRecorder.recordAfterCreate(saved);
+        if (isSubmit) {
+            paymentRequestAuditRecorder.recordAfterSubmit(saved);
+        }
+
+        return toResponseDTO(saved);
     }
 
     @Override
@@ -423,6 +432,8 @@ public class PaymentRequestRestServiceImpl implements PaymentRequestRestService 
                     "Ticket hanya dapat diubah saat status Draft atau Revisi"
             );
         }
+
+        PaymentRequestAuditRecorder.BeforeState beforeUpdate = paymentRequestAuditRecorder.capture(pr);
 
         boolean isSubmit = "true".equalsIgnoreCase(submitStr);
 
@@ -508,9 +519,10 @@ public class PaymentRequestRestServiceImpl implements PaymentRequestRestService 
 
         List<Map<String, String>> breakdownItems = parseAndValidateBreakdownList(breakdownListJson, isSubmit, amount);
 
+        boolean supportingDocumentChanged = supportingDocument != null && !supportingDocument.isEmpty();
         String documentUrl = pr.getSupportingDocumentUrl();
         String documentName = pr.getSupportingDocumentName();
-        if (supportingDocument != null && !supportingDocument.isEmpty()) {
+        if (supportingDocumentChanged) {
             String contentType = supportingDocument.getContentType();
             if (contentType == null ||
                     (!ALLOWED_IMAGE_TYPES.contains(contentType) && !ALLOWED_DOC_TYPES.contains(contentType))) {
@@ -571,7 +583,13 @@ public class PaymentRequestRestServiceImpl implements PaymentRequestRestService 
 
         paymentRequestRepository.save(pr);
 
-        return toResponseDTO(pr);
+        PaymentRequest saved = paymentRequestRepository.findDetailById(uuid).orElse(pr);
+        paymentRequestAuditRecorder.recordAfterUpdate(beforeUpdate, saved, supportingDocumentChanged);
+        if (isSubmit) {
+            paymentRequestAuditRecorder.recordAfterSubmit(saved);
+        }
+
+        return toResponseDTO(saved);
     }
 
     @Override
@@ -600,6 +618,8 @@ public class PaymentRequestRestServiceImpl implements PaymentRequestRestService 
             throw new IllegalStateException("Ticket tidak dapat dibatalkan karena sudah diproses");
         }
 
+        PaymentRequestAuditRecorder.BeforeState beforeCancel = paymentRequestAuditRecorder.capture(pr);
+
         pr.setStatus(PaymentRequestStatus.CANCELLED);
         pr.setCancelledAt(LocalDateTime.now());
         pr.setCancelledBy(actor);
@@ -612,6 +632,8 @@ public class PaymentRequestRestServiceImpl implements PaymentRequestRestService 
                 .status(PaymentRequestStatus.CANCELLED)
                 .note(null)
                 .build());
+
+        paymentRequestAuditRecorder.recordAfterCancel(beforeCancel, uuid);
     }
 
     @Override
@@ -689,6 +711,8 @@ public class PaymentRequestRestServiceImpl implements PaymentRequestRestService 
             throw new IllegalStateException("Ticket sudah diproses / status tidak valid");
         }
 
+        PaymentRequestAuditRecorder.BeforeState beforeReview = paymentRequestAuditRecorder.capture(pr);
+
         String normalizedReviewNote = reviewNote == null ? null : reviewNote.trim();
         if (reviewNoteRequired && (normalizedReviewNote == null || normalizedReviewNote.isBlank())) {
             throw new IllegalArgumentException("Catatan review wajib diisi");
@@ -708,10 +732,20 @@ public class PaymentRequestRestServiceImpl implements PaymentRequestRestService 
                 .note(normalizedReviewNote)
                 .build());
 
+        PaymentRequest saved = paymentRequestRepository.findDetailById(uuid).orElse(pr);
+        switch (targetStatus) {
+            case APPROVED -> paymentRequestAuditRecorder.recordAfterApprove(beforeReview, saved, normalizedReviewNote);
+            case REJECTED -> paymentRequestAuditRecorder.recordAfterReject(beforeReview, saved, normalizedReviewNote);
+            case REVISION_REQUESTED ->
+                    paymentRequestAuditRecorder.recordAfterRevision(beforeReview, saved, normalizedReviewNote);
+            default -> {
+            }
+        }
+
         List<PaymentRequestReviewActivity> activities =
                 paymentRequestReviewActivityRepository.findByPaymentRequest_IdOrderByCreatedAtAsc(uuid);
 
-        return toDetailResponseDTO(pr, activities);
+        return toDetailResponseDTO(saved, activities);
     }
 
     private void assertCanViewDetail(PaymentRequest paymentRequest, User viewer) {

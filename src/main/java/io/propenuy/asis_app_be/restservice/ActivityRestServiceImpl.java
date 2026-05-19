@@ -1,5 +1,6 @@
 package io.propenuy.asis_app_be.restservice;
 
+import io.propenuy.asis_app_be.audit.ActivityAuditRecorder;
 import io.propenuy.asis_app_be.model.Activity;
 import io.propenuy.asis_app_be.model.ActivityAttachment;
 import io.propenuy.asis_app_be.model.User;
@@ -27,6 +28,7 @@ public class ActivityRestServiceImpl implements ActivityRestService {
     private final ActivityAttachmentRepository attachmentRepository;
     private final UserRepository userRepository;
     private final CloudinaryStorageService cloudinaryStorageService;
+    private final ActivityAuditRecorder activityAuditRecorder;
 
     @Override
     @Transactional
@@ -65,6 +67,7 @@ public class ActivityRestServiceImpl implements ActivityRestService {
                 .build();
 
         activityRepository.save(activity);
+        activityAuditRecorder.recordAfterCreate(activity);
 
         return toResponseDTO(activity);
     }
@@ -112,6 +115,8 @@ public class ActivityRestServiceImpl implements ActivityRestService {
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
                         "Postingan kegiatan dengan id " + id + " tidak ditemukan"));
 
+        ActivityAuditRecorder.BeforeState beforeUpdate = activityAuditRecorder.capture(activity);
+
         activity.setTitle(request.getTitle().trim());
         activity.setCategory(request.getCategory().trim());
         activity.setProgram(request.getProgram().trim());
@@ -120,6 +125,7 @@ public class ActivityRestServiceImpl implements ActivityRestService {
         activity.setDescription(request.getDescription().trim());
 
         activityRepository.save(activity);
+        activityAuditRecorder.recordAfterUpdate(beforeUpdate, activity);
 
         return toResponseDTO(activity);
     }
@@ -131,10 +137,12 @@ public class ActivityRestServiceImpl implements ActivityRestService {
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
                         "Postingan kegiatan dengan id " + id + " tidak ditemukan"));
 
-        // Soft delete
+        ActivityAuditRecorder.BeforeState beforeDelete = activityAuditRecorder.capture(activity);
+
         activity.setDeleted(true);
         activity.setDeletedAt(LocalDateTime.now());
         activityRepository.save(activity);
+        activityAuditRecorder.recordAfterSoftDelete(beforeDelete, id);
     }
 
     private ActivityResponseDTO toResponseDTO(Activity activity) {

@@ -73,6 +73,8 @@ public class WebSecurityConfig {
                 .requestMatchers("/api/donasi/**").hasAnyAuthority("ADMIN", "DONATUR")
                 .requestMatchers("/api/laporan/**").hasAnyAuthority("ADMIN", "KETUA YAYASAN")
                 .requestMatchers("/api/mis/**").hasAnyAuthority("PENGURUS", "KETUA YAYASAN")
+                .requestMatchers(HttpMethod.GET,"/api/auditLog").hasAnyAuthority("KETUA YAYASAN", "ADMIN")
+
                 .requestMatchers("/api/eis/**").hasAuthority("KETUA YAYASAN")
 
                 // ================= DEFAULT =================
