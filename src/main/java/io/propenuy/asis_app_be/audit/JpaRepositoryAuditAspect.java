@@ -11,6 +11,7 @@ import io.propenuy.asis_app_be.model.InventoryUsageLog;
 import io.propenuy.asis_app_be.model.PaymentRequest;
 import io.propenuy.asis_app_be.model.PaymentRequestBreakdown;
 import io.propenuy.asis_app_be.model.PaymentRequestReviewActivity;
+import io.propenuy.asis_app_be.model.Reply;
 import io.propenuy.asis_app_be.model.User;
 import io.propenuy.asis_app_be.model.enums.AuditActionType;
 import io.propenuy.asis_app_be.model.enums.AuditModuleCode;
@@ -33,6 +34,7 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -41,6 +43,22 @@ import java.util.concurrent.atomic.AtomicReference;
 public class JpaRepositoryAuditAspect {
 
     private static final Logger log = LoggerFactory.getLogger(JpaRepositoryAuditAspect.class);
+
+    /** Entitas yang diaudit eksplisit di service layer, atau tidak perlu diaudit (mis. balasan). */
+    private static final Set<Class<?>> GENERIC_AUDIT_SKIP = Set.of(
+            User.class,
+            IncomeTransaction.class,
+            ExpenseTransaction.class,
+            PaymentRequest.class,
+            PaymentRequestBreakdown.class,
+            PaymentRequestReviewActivity.class,
+            Activity.class,
+            ActivityAttachment.class,
+            InventoryItem.class,
+            InventoryItemBreakdown.class,
+            InventoryUsageLog.class,
+            Reply.class
+    );
 
     private final AuditLogRepository auditLogRepository;
     private final UserRepository userRepository;
@@ -78,18 +96,7 @@ public class JpaRepositoryAuditAspect {
         String oldJson = auditOldSnapshotService.loadSnapshotOrNull(entityClass, id);
         Object result = pjp.proceed();
         Object persisted = result != null ? result : arg;
-        // Diaudit eksplisit di service layer (snapshot sebelum mutasi).
-        if (persisted instanceof User
-                || persisted instanceof IncomeTransaction
-                || persisted instanceof ExpenseTransaction
-                || persisted instanceof PaymentRequest
-                || persisted instanceof PaymentRequestBreakdown
-                || persisted instanceof PaymentRequestReviewActivity
-                || persisted instanceof Activity
-                || persisted instanceof ActivityAttachment
-                || persisted instanceof InventoryItem
-                || persisted instanceof InventoryItemBreakdown
-                || persisted instanceof InventoryUsageLog) {
+        if (shouldSkipGenericAudit(persisted)) {
             return result;
         }
         String newJson = auditEntitySerializer.toJson(persisted);
@@ -123,7 +130,7 @@ public class JpaRepositoryAuditAspect {
         }
         for (int i = 0; i < savedList.size(); i++) {
             Object persisted = savedList.get(i);
-            if (persisted == null || isAuditLogEntity(persisted)) {
+            if (persisted == null || shouldSkipGenericAudit(persisted)) {
                 continue;
             }
             String oldJ = i < oldJsonList.size() ? oldJsonList.get(i) : null;
@@ -142,10 +149,7 @@ public class JpaRepositoryAuditAspect {
             return pjp.proceed();
         }
         Object entity = pjp.getArgs()[0];
-        if (entity == null || isAuditLogEntity(entity)) {
-            return pjp.proceed();
-        }
-        if (entity instanceof ActivityAttachment) {
+        if (entity == null || shouldSkipGenericAudit(entity)) {
             return pjp.proceed();
         }
         Class<?> entityClass = Hibernate.getClass(entity);
@@ -169,7 +173,7 @@ public class JpaRepositoryAuditAspect {
             oldJson = auditOldSnapshotService.loadSnapshotOrNull(domainClass, id);
         }
         Object proceed = pjp.proceed();
-        if (oldJson != null && domainClass != null && id != null && !AuditLog.class.equals(domainClass)) {
+        if (oldJson != null && domainClass != null && id != null && !shouldSkipGenericAuditClass(domainClass)) {
             persistAuditRow(domainClass, id, AuditActionType.DELETE, oldJson, null);
         }
         return proceed;
@@ -190,6 +194,20 @@ public class JpaRepositoryAuditAspect {
     private boolean isAuditLogEntity(Object entity) {
         Class<?> c = Hibernate.getClass(entity);
         return AuditLog.class.equals(c);
+    }
+
+    private boolean shouldSkipGenericAudit(Object entity) {
+        if (entity == null) {
+            return true;
+        }
+        if (isAuditLogEntity(entity)) {
+            return true;
+        }
+        return shouldSkipGenericAuditClass(Hibernate.getClass(entity));
+    }
+
+    private boolean shouldSkipGenericAuditClass(Class<?> clazz) {
+        return clazz != null && GENERIC_AUDIT_SKIP.contains(clazz);
     }
 
     private void writeAuditLog(Object entity, AuditActionType actionType, String oldJson, String newJson) {
