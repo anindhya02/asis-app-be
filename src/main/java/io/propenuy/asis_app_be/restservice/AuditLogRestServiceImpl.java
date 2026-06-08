@@ -18,11 +18,23 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class AuditLogRestServiceImpl implements AuditLogRestService {
+
+    /** Modul yang ditampilkan di audit log (selaras dengan filter FE). */
+    private static final Set<AuditModuleCode> LISTED_MODULES = EnumSet.of(
+            AuditModuleCode.USER,
+            AuditModuleCode.INCOME_TRANSACTION,
+            AuditModuleCode.EXPENSE_TRANSACTION,
+            AuditModuleCode.PAYMENT_REQUEST,
+            AuditModuleCode.INVENTORY_ITEM,
+            AuditModuleCode.ACTIVITY
+    );
 
     private final AuditLogRepository auditLogRepository;
 
@@ -71,7 +83,11 @@ public class AuditLogRestServiceImpl implements AuditLogRestService {
                 predicates.add(cb.lessThanOrEqualTo(root.get("occurredAt"), end));
             }
             AuditActionType.parse(actionType).ifPresent(at -> predicates.add(cb.equal(root.get("actionType"), at)));
-            AuditModuleCode.fromCode(moduleCode).ifPresent(mc -> predicates.add(cb.equal(root.get("moduleCode"), mc)));
+            if (moduleCode != null && !moduleCode.isBlank()) {
+                AuditModuleCode.fromCode(moduleCode).ifPresent(mc -> predicates.add(cb.equal(root.get("moduleCode"), mc)));
+            } else {
+                predicates.add(root.get("moduleCode").in(LISTED_MODULES));
+            }
 
             if (userSearch != null && !userSearch.isBlank()) {
                 String pattern = "%" + userSearch.trim().toLowerCase() + "%";
