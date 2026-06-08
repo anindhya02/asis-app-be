@@ -22,6 +22,7 @@ public class FinancialReportResponseDTO {
     private BigDecimal totalIncome;
     private BigDecimal totalExpense;
     private BigDecimal netDifference;
+    private BigDecimal closingBalance;
     private List<String> selectedCategoryIds;
     private List<CategoryOptionDTO> availableCategories;
     private List<FinancialReportBreakdownRowDTO> breakdown;
