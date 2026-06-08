@@ -142,6 +142,8 @@ public class UserRestServiceImpl implements UserRestService {
         return mapToDTO(user);
     }
 
+    // Live Coding - Deactivate User
+
     @Override
     public UserResponseDTO deactivateUser(UUID userId) {
         User user = userRepository.findById(userId)

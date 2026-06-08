@@ -161,6 +161,11 @@ public class FinancialReportServiceImpl implements FinancialReportService {
 
         BigDecimal netDifference = totalIncome.subtract(totalExpense);
 
+        // Saldo akumulatif s.d. akhir periode
+        BigDecimal cumulativeIncome  = incomeTransactionRepository.sumAllConfirmedUpTo(end);
+        BigDecimal cumulativeExpense = expenseTransactionRepository.sumAllActiveUpTo(end);
+        BigDecimal closingBalance    = cumulativeIncome.subtract(cumulativeExpense);
+
         List<FinancialReportBreakdownRowDTO> breakdown = new ArrayList<>();
         for (Object[] row : incomeRows) {
             IncomeCategory cat = (IncomeCategory) row[0];
@@ -207,6 +212,7 @@ public class FinancialReportServiceImpl implements FinancialReportService {
                         .build())
                 .totalIncome(totalIncome)
                 .totalExpense(totalExpense)
+                .closingBalance(closingBalance)
                 .netDifference(netDifference)
                 .selectedCategoryIds(new ArrayList<>(selectedCategorySet))
                 .availableCategories(buildAvailableCategories())

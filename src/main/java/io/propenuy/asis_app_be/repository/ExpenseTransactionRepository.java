@@ -56,4 +56,13 @@ public interface ExpenseTransactionRepository extends JpaRepository<ExpenseTrans
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
             @Param("category") ExpenseCategory category);
+
+@Query("""
+        SELECT COALESCE(SUM(e.amount), 0)
+        FROM ExpenseTransaction e
+        WHERE e.status = 'ACTIVE'
+          AND e.deletedAt IS NULL
+          AND e.transactionDate <= :endDate
+        """)
+BigDecimal sumAllActiveUpTo(@Param("endDate") LocalDate endDate);
 }
